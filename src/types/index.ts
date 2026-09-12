@@ -59,3 +59,11 @@ export interface AttentionItem {
   label: string;
   detail: string;
 }
+
+export interface ContainerUpdate {
+  containerId: string;
+  containerName: string;
+  currentVersion: string | null;
+  availableVersion: string | null;
+  updateAvailable: boolean;
+}

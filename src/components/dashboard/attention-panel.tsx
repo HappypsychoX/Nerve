@@ -11,15 +11,23 @@ export function AttentionPanel({ items }: { items: AttentionItem[] }) {
         action={<AlertTriangle className="h-4 w-4 text-degraded" />}
       />
       <div className="flex-1 divide-y divide-line">
-        {items.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center justify-between gap-3 px-4 py-2.5"
-          >
-            <span className="text-sm text-fg">{item.label}</span>
-            <span className="truncate text-xs text-degraded">{item.detail}</span>
+        {items.length === 0 ? (
+          <div className="px-4 py-3 text-sm text-muted">
+            Nothing needs attention
           </div>
-        ))}
+        ) : (
+          items.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center justify-between gap-3 px-4 py-2.5"
+            >
+              <span className="text-sm text-fg">{item.label}</span>
+              <span className="truncate text-xs text-degraded">
+                {item.detail}
+              </span>
+            </div>
+          ))
+        )}
       </div>
     </Card>
   );

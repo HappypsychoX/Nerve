@@ -31,6 +31,7 @@ services:
       - PORT=3000
       - HOSTNAME=0.0.0.0
       - DOCKER_HOST=tcp://socket-proxy:2375
+      - WUD_URL=http://wud:3000
     volumes:
       - nerve-config:/app/config
       - nerve-data:/app/data

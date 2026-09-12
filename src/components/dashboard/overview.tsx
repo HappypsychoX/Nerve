@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import type { ServiceConfig } from "@/lib/config";
-import type { SystemStatusRow } from "@/types";
+import type { AttentionItem, SystemStatusRow } from "@/types";
 import { composeDockerSummary } from "@/lib/docker-summary";
 import { useDockerContainers, useDockerSystem } from "@/hooks/use-docker";
 import { useServicesHealth } from "@/hooks/use-services";
+import { useUpdates } from "@/hooks/use-updates";
 import { summarizeServices } from "@/lib/health";
 import { SystemStatus } from "@/components/dashboard/system-status";
 import { AttentionPanel } from "@/components/dashboard/attention-panel";
@@ -12,12 +14,13 @@ import { DockerPanel } from "@/components/dashboard/docker-panel";
 import { ContainersPreview } from "@/components/dashboard/containers-preview";
 import { ServicesPanel } from "@/components/dashboard/services-panel";
 import { QuickAccess } from "@/components/dashboard/quick-access";
-import { attentionItems, placeholderSystemRows } from "@/lib/mock/dashboard";
+import { placeholderSystemRows } from "@/lib/mock/dashboard";
 
 export function Overview({ quickLinks }: { quickLinks: ServiceConfig[] }) {
   const containers = useDockerContainers();
   const system = useDockerSystem();
   const { services } = useServicesHealth();
+  const updates = useUpdates();
   const summary = composeDockerSummary(containers, system);
 
   const dockerRow: SystemStatusRow = {
@@ -35,12 +38,42 @@ export function Overview({ quickLinks }: { quickLinks: ServiceConfig[] }) {
     detail: servicesSummary.detail,
   };
 
+  const updatesRow: SystemStatusRow = {
+    id: "updates",
+    label: "Updates",
+    health: updates.health,
+    detail: updates.detail,
+  };
+
+  const attention = useMemo<AttentionItem[]>(() => {
+    const items: AttentionItem[] = [];
+    if (updates.count > 0) {
+      items.push({
+        id: "wud",
+        label: "WUD",
+        detail: `${updates.count} update${updates.count === 1 ? "" : "s"}`,
+      });
+    }
+    for (const u of updates.updates) {
+      if (u.updateAvailable) {
+        items.push({
+          id: `update-${u.containerId}`,
+          label: u.containerName,
+          detail: "Update available",
+        });
+      }
+    }
+    return items;
+  }, [updates]);
+
   return (
     <div className="space-y-4">
-      <SystemStatus rows={[dockerRow, servicesRow, ...placeholderSystemRows]} />
+      <SystemStatus
+        rows={[dockerRow, servicesRow, updatesRow, ...placeholderSystemRows]}
+      />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <AttentionPanel items={attentionItems} />
+        <AttentionPanel items={attention} />
         <DockerPanel summary={summary} />
       </div>
 
