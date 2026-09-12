@@ -14,19 +14,20 @@ See [`Nerve-v1-Plan.md`](./Nerve-v1-Plan.md) for the full build plan.
 
 ## Status
 
-**Milestone 0 — Skeleton** (current).
+**Milestone 2 — Service Health** (current).
 
-This repository currently provides:
+Milestones 0–2 are implemented:
 
 - A Next.js + TypeScript application shell with a dark operations-console layout
 - Responsive navigation for **Overview**, **Containers**, **Backups**, and **Updates**
-- A placeholder overview dashboard (static sample data)
+- Live Docker integration (containers, stats, disk) via a read-only socket proxy
+- Configurable service health checks with an overall-health summary
 - A basic YAML configuration loader
 - A production `Dockerfile` and `compose.yaml` stack
 
-Not yet implemented: Docker/WUD/Offen/Gluetun integrations, service health
-checks, authentication, actions, alerts, and historical metrics. Those arrive
-in Milestones 1–7.
+Not yet implemented: WUD/Offen/Gluetun integrations, backup events, update
+tracking, authentication, actions, alerts, and historical metrics. Those arrive
+in Milestones 3–7.
 
 ---
 
@@ -116,6 +117,7 @@ src/
     ui/                # shared primitives (cards, status dots, metrics)
   lib/
     config/            # YAML configuration loader + types
+    integrations/      # docker + services adapters
     health.ts          # status model helpers
     mock/              # static placeholder data (Milestone 0 only)
     utils.ts
@@ -134,8 +136,8 @@ compose.yaml
 | Milestone | Scope                       | Status |
 | --------- | --------------------------- | ------ |
 | 0         | Skeleton                    | ✅     |
-| 1         | Docker integration          | ⏳     |
-| 2         | Service health              | ⏳     |
+| 1         | Docker integration          | ✅     |
+| 2         | Service health              | ✅     |
 | 3         | WUD integration             | ⏳     |
 | 4         | Backup integration          | ⏳     |
 | 5         | Gluetun                     | ⏳     |

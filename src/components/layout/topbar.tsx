@@ -3,13 +3,13 @@
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { StatusPill } from "@/components/ui/status-dot";
-import { useDockerHealth } from "@/hooks/use-docker";
+import { useOverallHealth } from "@/hooks/use-services";
 import { Clock } from "./clock";
 import { NAV_ITEMS } from "./nav-items";
 
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   const pathname = usePathname();
-  const health = useDockerHealth();
+  const health = useOverallHealth();
 
   const current = NAV_ITEMS.find((item) =>
     item.href === "/" ? pathname === "/" : pathname.startsWith(item.href),

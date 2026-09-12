@@ -3,6 +3,7 @@ import type {
   ContainerHealth,
   ContainerState,
   IntegrationHealth,
+  ServiceHealth,
 } from "@/types";
 
 export const HEALTH_TEXT: Record<IntegrationHealth, string> = {
@@ -55,4 +56,50 @@ export function containerStateLabel(
   if (state === "stopped") return "stopped";
   if (state === "running") return "running";
   return "unknown";
+}
+
+export const SERVICE_HEALTH_TEXT: Record<ServiceHealth, string> = {
+  online: "Online",
+  degraded: "Degraded",
+  offline: "Offline",
+  unknown: "Unknown",
+};
+
+export function serviceHealthToIntegration(
+  health: ServiceHealth,
+): IntegrationHealth {
+  return health === "online" ? "healthy" : health;
+}
+
+export function computeOverallHealth(
+  docker: IntegrationHealth,
+  criticalServices: ServiceHealth[],
+): IntegrationHealth {
+  if (docker === "offline") return "offline";
+  if (docker === "unknown") return "unknown";
+  const base = docker === "degraded" ? "degraded" : "healthy";
+  if (criticalServices.some((s) => s === "offline" || s === "degraded")) {
+    return "degraded";
+  }
+  return base;
+}
+
+export function summarizeServices(
+  rows: readonly { health: ServiceHealth }[],
+): { health: IntegrationHealth; detail: string } {
+  if (rows.length === 0) {
+    return { health: "unknown", detail: "No services configured" };
+  }
+  const checked = rows.filter((r) => r.health !== "unknown");
+  if (checked.length === 0) {
+    return { health: "unknown", detail: "Not checked" };
+  }
+  const online = checked.filter((r) => r.health === "online").length;
+  if (online === checked.length) {
+    return { health: "healthy", detail: `${online}/${checked.length} online` };
+  }
+  if (online === 0) {
+    return { health: "offline", detail: `0/${checked.length} online` };
+  }
+  return { health: "degraded", detail: `${online}/${checked.length} online` };
 }
