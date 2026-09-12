@@ -1,31 +1,55 @@
 services:
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: nerve-socket-proxy
+    restart: unless-stopped
+    # The socket mount is read-only and the proxy denies non-GET requests, so
+    # privileged is not needed on standard Linux hosts. If your host enforces
+    # SELinux/AppArmor and the proxy cannot reach the socket, uncomment:
+    # privileged: true
+    environment:
+      # Read-only API areas only; POST is denied by default (only GET/HEAD pass).
+      CONTAINERS: "1"   # /containers  (list, inspect, stats)
+      IMAGES: "1"       # /images      (image count)
+      INFO: "1"         # /info        (host MemTotal)
+      SYSTEM: "1"       # /system/df   (disk usage)
+      EVENTS: "1"       # /events      (unused in M1; enabled per plan §7)
+      VERSION: "1"      # /version     (engine version)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - nerve-internal
+    # No ports: private network only.
+
   nerve:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: nerve
     restart: unless-stopped
-    # Inject secrets/connection details via `--env-file .env` (see .env.example),
-    # or uncomment the env_file line below once you have created a `.env` file.
-    # env_file:
-    #   - .env
     environment:
       - PORT=3000
       - HOSTNAME=0.0.0.0
+      - DOCKER_HOST=tcp://socket-proxy:2375
     volumes:
-      # Seeded from the image's config/ on first run; drop a nerve.yaml in
-      # here (or set NERVE_CONFIG_PATH) to override the example config.
       - nerve-config:/app/config
-      # Reserved for future SQLite persistence (Milestone 4).
       - nerve-data:/app/data
     ports:
-      - "3000:3000"
+      - "3001:3000"
+    depends_on:
+      - socket-proxy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
+    networks:
+      - nerve-internal
+
+networks:
+  nerve-internal:
+    driver: bridge
 
 volumes:
   nerve-config:

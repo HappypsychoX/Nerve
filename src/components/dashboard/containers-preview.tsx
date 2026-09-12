@@ -3,7 +3,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { StatusDot } from "@/components/ui/status-dot";
 import { formatBytes, formatUptime } from "@/lib/utils";
 import {
-  containerOverallHealth,
+  containerDisplayStatus,
   containerStateLabel,
 } from "@/lib/health";
 import type { ContainerStatus } from "@/types";
@@ -29,7 +29,7 @@ export function ContainersPreview({
       />
       <div className="divide-y divide-line">
         {containers.map((container) => {
-          const health = containerOverallHealth(
+          const health = containerDisplayStatus(
             container.state,
             container.health,
           );

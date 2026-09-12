@@ -1,6 +1,6 @@
 import { Card, CardHeader } from "@/components/ui/card";
 import { StatusDot } from "@/components/ui/status-dot";
-import type { SystemStatusRow } from "@/lib/mock/dashboard";
+import type { SystemStatusRow } from "@/types";
 
 export function SystemStatus({ rows }: { rows: SystemStatusRow[] }) {
   return (

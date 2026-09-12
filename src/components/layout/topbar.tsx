@@ -2,19 +2,14 @@
 
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
-import type { IntegrationHealth } from "@/types";
 import { StatusPill } from "@/components/ui/status-dot";
+import { useDockerHealth } from "@/hooks/use-docker";
 import { Clock } from "./clock";
 import { NAV_ITEMS } from "./nav-items";
 
-export function Topbar({
-  health,
-  onMenuClick,
-}: {
-  health: IntegrationHealth;
-  onMenuClick: () => void;
-}) {
+export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   const pathname = usePathname();
+  const health = useDockerHealth();
 
   const current = NAV_ITEMS.find((item) =>
     item.href === "/" ? pathname === "/" : pathname.startsWith(item.href),

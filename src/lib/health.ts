@@ -1,4 +1,5 @@
 import type {
+  ContainerDisplayStatus,
   ContainerHealth,
   ContainerState,
   IntegrationHealth,
@@ -32,13 +33,14 @@ export const HEALTH_BORDER_COLOR: Record<IntegrationHealth, string> = {
   unknown: "border-unknown/40",
 };
 
-export function containerOverallHealth(
+export function containerDisplayStatus(
   state: ContainerState,
   health: ContainerHealth,
-): IntegrationHealth {
+): ContainerDisplayStatus {
+  if (state === "running" && (health === "none" || health === "healthy")) return "healthy";
+  if (state === "running" && (health === "starting" || health === "unhealthy")) return "degraded";
+  if (state === "restarting") return "degraded";
   if (state === "stopped") return "offline";
-  if (state === "restarting" || health === "unhealthy") return "degraded";
-  if (state === "running") return "healthy";
   return "unknown";
 }
 

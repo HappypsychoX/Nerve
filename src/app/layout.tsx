@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { loadConfig } from "@/lib/config";
 import { AppShell } from "@/components/layout/app-shell";
-import { overallHealth } from "@/lib/mock/dashboard";
 
 export const metadata: Metadata = {
   title: "Nerve",
@@ -23,9 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        <AppShell config={config} health={overallHealth}>
-          {children}
-        </AppShell>
+        <AppShell config={config}>{children}</AppShell>
       </body>
     </html>
   );

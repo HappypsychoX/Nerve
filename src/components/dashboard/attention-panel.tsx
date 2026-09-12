@@ -1,6 +1,6 @@
 import { AlertTriangle } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
-import type { AttentionItem } from "@/lib/mock/dashboard";
+import type { AttentionItem } from "@/types";
 
 export function AttentionPanel({ items }: { items: AttentionItem[] }) {
   return (
