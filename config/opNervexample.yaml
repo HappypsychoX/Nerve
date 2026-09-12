@@ -1,0 +1,72 @@
+# Nerve — example configuration
+#
+# This is the default (non-secret) display configuration for Nerve.
+# Copy it to config/nerve.yaml to customize, or point NERVE_CONFIG_PATH
+# at your own file. Never commit secrets to either file — credentials
+# belong in environment variables / Docker secrets.
+#
+# The config loader falls back to this file when config/nerve.yaml is absent.
+
+# Title shown in the sidebar brand.
+title: Nerve
+
+# Name of the host this Nerve instance is describing.
+serverName: Home Server
+
+# Logical service groups, in display order.
+groups:
+  - id: media
+    name: Media
+  - id: downloads
+    name: Downloads
+  - id: infrastructure
+    name: Infrastructure
+  - id: monitoring
+    name: Monitoring / Maintenance
+  - id: remote-access
+    name: Remote Access
+  - id: other
+    name: Other
+
+# Internal services: quick links now, health checks in a later milestone.
+# `url`     — public/open URL used for the quick-access shortcut.
+# `checkUrl`— private URL Nerve will probe for reachability.
+# `critical`— a critical service being down degrades overall health.
+services:
+  - id: portainer
+    name: Portainer
+    url: https://192.168.40.186:9443
+    checkUrl: https://192.168.40.186:9443
+    group: infrastructure
+    critical: true
+
+  - id: npm
+    name: Nginx Proxy Manager
+    url: https://192.168.40.186:81
+    checkUrl: http://192.168.40.186:81
+    group: infrastructure
+    critical: true
+
+  - id: jellyfin
+    name: Jellyfin
+    url: https://jellyfin.example.com
+    checkUrl: http://jellyfin:8096
+    group: media
+    critical: true
+
+  - id: jellyseerr
+    name: Jellyseerr
+    url: https://jellyseerr.example.com
+    checkUrl: http://jellyseerr:5055
+    group: media
+
+  - id: wud
+    name: WUD
+    url: https://wud.example.com
+    checkUrl: http://wud:3000
+    group: monitoring
+
+  - id: t3
+    name: T3 Code
+    url: https://t3.example.com
+    group: remote-access

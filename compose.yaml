@@ -1,0 +1,32 @@
+services:
+  nerve:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nerve
+    restart: unless-stopped
+    # Inject secrets/connection details via `--env-file .env` (see .env.example),
+    # or uncomment the env_file line below once you have created a `.env` file.
+    # env_file:
+    #   - .env
+    environment:
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    volumes:
+      # Seeded from the image's config/ on first run; drop a nerve.yaml in
+      # here (or set NERVE_CONFIG_PATH) to override the example config.
+      - nerve-config:/app/config
+      # Reserved for future SQLite persistence (Milestone 4).
+      - nerve-data:/app/data
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  nerve-config:
+  nerve-data:

@@ -1,0 +1,31 @@
+export function cn(...classes: Array<string | false | null | undefined>): string {
+  return classes.filter(Boolean).join(" ");
+}
+
+export function formatBytes(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined) return "—";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  const rounded =
+    value >= 100
+      ? Math.round(value)
+      : value >= 10
+        ? Math.round(value * 10) / 10
+        : Math.round(value * 100) / 100;
+  return `${rounded} ${units[unit]}`;
+}
+
+export function formatUptime(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined) return "—";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}

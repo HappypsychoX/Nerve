@@ -1,0 +1,14 @@
+node_modules
+.next
+out
+build
+.git
+.gitignore
+.env
+.env.*
+config/nerve.yaml
+*.md
+Dockerfile
+compose.yaml
+.dockerignore
+npm-debug.log*
