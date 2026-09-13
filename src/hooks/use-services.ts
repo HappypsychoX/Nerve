@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useBackups, BACKUP_POLL_INTERVAL_MS } from "@/hooks/use-backups";
 import { useDockerHealth } from "@/hooks/use-docker";
+import { useVpn } from "@/hooks/use-vpn";
 import { computeOverallHealth } from "@/lib/health";
 import type { ServiceRow } from "@/lib/integrations/services/types";
 import type { IntegrationHealth } from "@/types";
@@ -64,8 +65,14 @@ export function useOverallHealth(): IntegrationHealth {
   const docker = useDockerHealth(5000);
   const { services } = useServicesHealth(30000);
   const backups = useBackups(BACKUP_POLL_INTERVAL_MS);
+  const vpn = useVpn();
   const criticalServices = services
     .filter((service) => service.critical)
     .map((service) => service.health);
-  return computeOverallHealth(docker, criticalServices, backups.health);
+  return computeOverallHealth({
+    docker,
+    criticalServices,
+    backup: backups.health,
+    vpn: vpn.health,
+  });
 }

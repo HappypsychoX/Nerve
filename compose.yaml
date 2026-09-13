@@ -33,6 +33,8 @@ services:
       - DOCKER_HOST=tcp://socket-proxy:2375
       - WUD_URL=http://wud:3000
       - OFFEN_WEBHOOK_TOKEN=${OFFEN_WEBHOOK_TOKEN:-}
+      - GLUETUN_URL=${GLUETUN_URL:-http://gluetun:8000}
+      - GLUETUN_API_KEY=${GLUETUN_API_KEY:-}
     volumes:
       - nerve-config:/app/config
       - nerve-data:/app/data

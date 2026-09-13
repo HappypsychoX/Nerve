@@ -16,6 +16,16 @@ export interface ContainerStatus {
   memoryBytes: number | null;
 }
 
+export type VpnState = "running" | "stopped" | "unknown";
+
+export interface VpnStatus {
+  state: VpnState;
+  publicIp: string | null;
+  containerHealthy: boolean | null;
+  containerState: ContainerState | null;
+  containerHealth: ContainerHealth | null;
+}
+
 export type ServiceHealth = "online" | "degraded" | "offline" | "unknown";
 
 // Per-container derived DISPLAY status. Structurally identical to

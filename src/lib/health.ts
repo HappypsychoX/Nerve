@@ -71,18 +71,32 @@ export function serviceHealthToIntegration(
   return health === "online" ? "healthy" : health;
 }
 
-export function computeOverallHealth(
-  docker: IntegrationHealth,
-  criticalServices: ServiceHealth[],
-  backup: IntegrationHealth = "unknown",
-): IntegrationHealth {
+export interface OverallHealthInput {
+  docker: IntegrationHealth;
+  criticalServices: ServiceHealth[];
+  backup?: IntegrationHealth;
+  vpn?: IntegrationHealth;
+}
+
+export function computeOverallHealth({
+  docker,
+  criticalServices,
+  backup = "unknown",
+  vpn = "unknown",
+}: OverallHealthInput): IntegrationHealth {
   if (docker === "offline") return "offline";
   if (docker === "unknown") return "unknown";
-  const base = docker === "degraded" ? "degraded" : "healthy";
+
+  const base: IntegrationHealth = docker === "degraded" ? "degraded" : "healthy";
+
   if (criticalServices.some((s) => s === "offline" || s === "degraded")) {
     return "degraded";
   }
+
+  if (vpn === "degraded" || vpn === "offline") return "degraded";
+
   if (backup === "degraded") return "degraded";
+
   return base;
 }
 
