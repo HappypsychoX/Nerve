@@ -74,6 +74,7 @@ export function serviceHealthToIntegration(
 export function computeOverallHealth(
   docker: IntegrationHealth,
   criticalServices: ServiceHealth[],
+  backup: IntegrationHealth = "unknown",
 ): IntegrationHealth {
   if (docker === "offline") return "offline";
   if (docker === "unknown") return "unknown";
@@ -81,6 +82,7 @@ export function computeOverallHealth(
   if (criticalServices.some((s) => s === "offline" || s === "degraded")) {
     return "degraded";
   }
+  if (backup === "degraded") return "degraded";
   return base;
 }
 

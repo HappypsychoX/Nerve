@@ -32,6 +32,7 @@ services:
       - HOSTNAME=0.0.0.0
       - DOCKER_HOST=tcp://socket-proxy:2375
       - WUD_URL=http://wud:3000
+      - OFFEN_WEBHOOK_TOKEN=${OFFEN_WEBHOOK_TOKEN:-}
     volumes:
       - nerve-config:/app/config
       - nerve-data:/app/data

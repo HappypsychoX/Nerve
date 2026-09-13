@@ -1,0 +1,19 @@
+{{/*
+  Nerve notification template for offen/docker-volume-backup.
+
+  Mount into each backup container at:
+      /etc/dockervolumebackup/notifications.d/nerve.tmpl
+
+  Configure the container (replace <TOKEN> and set the source accordingly):
+      NOTIFICATION_LEVEL=info
+      # volume-backup-local (daily)  -> @X-Nerve-Source=local
+      # volume-backup-cloudflare     -> @X-Nerve-Source=cloudflare
+      NOTIFICATION_URLS=generic://nerve:3000/api/webhooks/offen?@X-Nerve-Token=<TOKEN>&@X-Nerve-Source=<local|cloudflare>&template=json
+
+  The body renders a compact JSON object. Only status/stats/error are emitted;
+  the Offen Config (which contains secrets) is never rendered.
+*/}}
+{{- define "title_success" -}}docker-volume-backup succeeded{{- end -}}
+{{- define "title_failure" -}}docker-volume-backup failed{{- end -}}
+{{- define "body_success" -}}{"status":"success","stats":{{ toJson .Stats }}}{{- end -}}
+{{- define "body_failure" -}}{"status":"failure","stats":{{ toJson .Stats }},"error":{{ toJson .Error }}}{{- end -}}

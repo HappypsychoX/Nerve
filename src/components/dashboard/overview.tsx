@@ -7,10 +7,12 @@ import { composeDockerSummary } from "@/lib/docker-summary";
 import { useDockerContainers, useDockerSystem } from "@/hooks/use-docker";
 import { useServicesHealth } from "@/hooks/use-services";
 import { useUpdates } from "@/hooks/use-updates";
+import { useBackups } from "@/hooks/use-backups";
 import { summarizeServices } from "@/lib/health";
 import { SystemStatus } from "@/components/dashboard/system-status";
 import { AttentionPanel } from "@/components/dashboard/attention-panel";
 import { DockerPanel } from "@/components/dashboard/docker-panel";
+import { BackupCard } from "@/components/dashboard/backup-card";
 import { ContainersPreview } from "@/components/dashboard/containers-preview";
 import { ServicesPanel } from "@/components/dashboard/services-panel";
 import { QuickAccess } from "@/components/dashboard/quick-access";
@@ -21,6 +23,7 @@ export function Overview({ quickLinks }: { quickLinks: ServiceConfig[] }) {
   const system = useDockerSystem();
   const { services } = useServicesHealth();
   const updates = useUpdates();
+  const backups = useBackups();
   const summary = composeDockerSummary(containers, system);
 
   const dockerRow: SystemStatusRow = {
@@ -43,6 +46,13 @@ export function Overview({ quickLinks }: { quickLinks: ServiceConfig[] }) {
     label: "Updates",
     health: updates.health,
     detail: updates.detail,
+  };
+
+  const backupRow: SystemStatusRow = {
+    id: "backup",
+    label: "Backup",
+    health: backups.health,
+    detail: backups.detail,
   };
 
   const attention = useMemo<AttentionItem[]>(() => {
@@ -69,12 +79,19 @@ export function Overview({ quickLinks }: { quickLinks: ServiceConfig[] }) {
   return (
     <div className="space-y-4">
       <SystemStatus
-        rows={[dockerRow, servicesRow, updatesRow, ...placeholderSystemRows]}
+        rows={[
+          dockerRow,
+          servicesRow,
+          updatesRow,
+          backupRow,
+          ...placeholderSystemRows,
+        ]}
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <AttentionPanel items={attention} />
         <DockerPanel summary={summary} />
+        <BackupCard data={backups} />
       </div>
 
       <ServicesPanel services={services} />

@@ -67,3 +67,23 @@ export interface ContainerUpdate {
   availableVersion: string | null;
   updateAvailable: boolean;
 }
+
+export type BackupSource = "local" | "cloudflare";
+export type BackupStatus = "success" | "failure";
+export type BackupStorageStatus = "success" | "failure" | "skipped" | null;
+export interface BackupRun {
+  id: number;
+  status: BackupStatus;
+  source: BackupSource | null;
+  startedAt: number;   // epoch ms
+  endedAt: number | null; // epoch ms
+  durationSeconds: number | null;
+  filename: string | null;
+  sizeBytes: number | null;
+  stoppedContainers: number;
+  stopErrors: number;
+  localStatus: BackupStorageStatus;
+  s3Status: BackupStorageStatus;
+  error: string | null;
+  receivedAt: number;  // epoch ms
+}

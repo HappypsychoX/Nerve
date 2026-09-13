@@ -27,3 +27,8 @@ config/nerve.yaml
 
 # typescript
 *.tsbuildinfo
+
+# local sqlite database
+*.db
+*.db-wal
+*.db-shm
