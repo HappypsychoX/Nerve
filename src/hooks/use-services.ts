@@ -1,78 +1,34 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useBackups, BACKUP_POLL_INTERVAL_MS } from "@/hooks/use-backups";
-import { useDockerHealth } from "@/hooks/use-docker";
-import { useVpn } from "@/hooks/use-vpn";
+import { useDashboard } from "@/components/dashboard/dashboard-provider";
 import { computeOverallHealth } from "@/lib/health";
 import type { ServiceRow } from "@/lib/integrations/services/types";
 import type { IntegrationHealth } from "@/types";
+import type { PolledMeta } from "@/hooks/use-polled";
 
-function usePolled<T>(
-  url: string,
-  intervalMs: number,
-  initial: T,
-): { data: T; loading: boolean } {
-  const [data, setData] = useState<T>(initial);
-  const [loading, setLoading] = useState<boolean>(true);
-
-  useEffect(() => {
-    let active = true;
-    const controller = new AbortController();
-
-    const tick = async () => {
-      try {
-        const res = await fetch(url, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        if (!res.ok) return;
-        const json = (await res.json()) as T;
-        if (active) setData(json);
-      } catch {
-        // keep previous data on failure; do not flip to offline
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-
-    tick();
-    const timer = setInterval(tick, intervalMs);
-
-    return () => {
-      active = false;
-      controller.abort();
-      clearInterval(timer);
-    };
-  }, [url, intervalMs]);
-
-  return { data, loading };
-}
-
-export function useServicesHealth(
-  intervalMs = 30000,
-): { services: ServiceRow[]; loading: boolean } {
-  const initial: { services: ServiceRow[] } = { services: [] };
-  const { data, loading } = usePolled<{ services: ServiceRow[] }>(
-    "/api/services/health",
-    intervalMs,
-    initial,
-  );
-  return { services: data.services, loading };
+export function useServicesHealth(): {
+  services: ServiceRow[];
+} & PolledMeta {
+  const { services } = useDashboard();
+  return {
+    services: services.data.services,
+    loading: services.loading,
+    error: services.error,
+    lastSuccessAt: services.lastSuccessAt,
+    stale: services.stale,
+  };
 }
 
 export function useOverallHealth(): IntegrationHealth {
-  const docker = useDockerHealth(5000);
-  const { services } = useServicesHealth(30000);
-  const backups = useBackups(BACKUP_POLL_INTERVAL_MS);
-  const vpn = useVpn();
-  const criticalServices = services
+  const { dockerHealth, containers, services, backups, vpn } = useDashboard();
+  const criticalServices = services.data.services
     .filter((service) => service.critical)
     .map((service) => service.health);
   return computeOverallHealth({
-    docker,
+    docker: dockerHealth.data.health,
     criticalServices,
-    backup: backups.health,
-    vpn: vpn.health,
+    backup: backups.data.health,
+    vpn: vpn.data.health,
+    criticalContainers: containers.data.criticalCounts,
   });
 }

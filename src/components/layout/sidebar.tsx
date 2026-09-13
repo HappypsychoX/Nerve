@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/version";
 import type { NerveConfig } from "@/lib/config";
 import { NAV_ITEMS } from "./nav-items";
+import { BrandMark } from "./brand-mark";
 
 export function Sidebar({
   config,
@@ -36,10 +37,10 @@ export function Sidebar({
       >
         <div className="flex items-center gap-3 border-b border-line px-4 py-4">
           <span className="flex h-9 w-9 items-center justify-center rounded-md border border-line-strong bg-surface-3">
-            <Activity className="h-5 w-5 text-accent" />
+            <BrandMark className="h-5 w-5 text-accent" />
           </span>
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold tracking-tight text-fg">
+            <div className="truncate font-mono text-sm font-semibold uppercase tracking-[0.25em] text-fg">
               {config.title}
             </div>
             <div className="truncate text-2xs text-faint">
@@ -81,8 +82,8 @@ export function Sidebar({
 
         <div className="border-t border-line px-4 py-3">
           <div className="flex items-center gap-2 text-2xs text-faint">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-unknown" />
-            Skeleton · Milestone 0
+            <span className="inline-block h-1.5 w-1.5 rounded-full bg-accent" />
+            Nerve v{APP_VERSION}
           </div>
         </div>
       </aside>

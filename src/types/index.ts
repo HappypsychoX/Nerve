@@ -64,10 +64,13 @@ export interface SystemStatusRow {
   detail: string;
 }
 
+export type AttentionSeverity = "critical" | "warning" | "info";
+
 export interface AttentionItem {
   id: string;
   label: string;
   detail: string;
+  severity: AttentionSeverity;
 }
 
 export interface ContainerUpdate {

@@ -1,15 +1,19 @@
 import type { ServiceGroupConfig } from "@/lib/config";
 import type { ContainerRow } from "@/lib/integrations/docker/types";
-import type { IntegrationHealth } from "@/types";
+import type { ContainerUpdate, IntegrationHealth } from "@/types";
 import { containerDisplayStatus, containerStateLabel } from "@/lib/health";
+import { matchUpdateForContainer } from "@/lib/config/matching";
 import { formatBytes, formatUptime } from "@/lib/utils";
 import { Card, CardHeader } from "@/components/ui/card";
 import { StatusDot } from "@/components/ui/status-dot";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function ContainerTable({
   rows,
   groups,
   health,
+  loading,
+  updates,
   query,
   group,
   status,
@@ -20,6 +24,8 @@ export function ContainerTable({
   rows: ContainerRow[];
   groups: ServiceGroupConfig[];
   health: IntegrationHealth;
+  loading: boolean;
+  updates: ContainerUpdate[];
   query: string;
   group: string;
   status: string;
@@ -85,63 +91,111 @@ export function ContainerTable({
               <th className="px-4 py-2.5 text-right font-medium">CPU</th>
               <th className="px-4 py-2.5 text-right font-medium">Memory</th>
               <th className="px-4 py-2.5 text-right font-medium">Restarts</th>
+              <th className="px-4 py-2.5 text-right font-medium">Update</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {health === "unknown" ? (
-              <tr>
-                <td
-                  colSpan={8}
-                  className="px-4 py-10 text-center text-sm text-muted"
-                >
-                  Loading…
-                </td>
-              </tr>
+            {loading ? (
+              Array.from({ length: 6 }).map((_, i) => (
+                <tr key={`skeleton-${i}`}>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-2 w-2 shrink-0 rounded-full" />
+                      <Skeleton className="h-4 w-36" />
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Skeleton className="h-4 w-16" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Skeleton className="h-4 w-20" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Skeleton className="h-4 w-32" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Skeleton className="h-4 w-12" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Skeleton className="ml-auto h-4 w-10" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Skeleton className="ml-auto h-4 w-12" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Skeleton className="ml-auto h-4 w-8" />
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Skeleton className="ml-auto h-4 w-12" />
+                  </td>
+                </tr>
+              ))
             ) : health === "healthy" && rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-4 py-10 text-center text-sm text-muted"
                 >
                   No containers match
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
-                <tr key={row.id} className="hover:bg-surface-2/50">
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <StatusDot
-                        health={containerDisplayStatus(row.state, row.health)}
-                      />
-                      <span className="font-medium text-fg">{row.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-muted">
-                    {containerStateLabel(row.state, row.health)}
-                  </td>
-                  <td className="px-4 py-2.5 text-xs text-muted">
-                    {groupName(row.group)}
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-muted">
-                    {row.image}
-                  </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-muted">
-                    {formatUptime(row.uptimeSeconds)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs text-muted">
-                    {row.cpuPercent === null
-                      ? "—"
-                      : `${row.cpuPercent.toFixed(1)}%`}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs text-muted">
-                    {formatBytes(row.memoryBytes)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs text-muted">
-                    {row.restartCount}
-                  </td>
-                </tr>
-              ))
+              rows.map((row) => {
+                const update = matchUpdateForContainer(updates, row.name);
+                return (
+                  <tr key={row.id} className="hover:bg-surface-2/50">
+                    <td className="px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <StatusDot
+                          health={containerDisplayStatus(row.state, row.health)}
+                          label={containerStateLabel(row.state, row.health)}
+                          pulse={
+                            row.state === "restarting" ||
+                            row.health === "unhealthy" ||
+                            row.state === "stopped"
+                          }
+                        />
+                        <span className="font-medium text-fg">{row.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-muted">
+                      {containerStateLabel(row.state, row.health)}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-muted">
+                      {groupName(row.group)}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-muted">
+                      {row.image}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-muted">
+                      {formatUptime(row.uptimeSeconds)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs text-muted">
+                      {row.cpuPercent === null
+                        ? "—"
+                        : `${row.cpuPercent.toFixed(1)}%`}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs text-muted">
+                      {formatBytes(row.memoryBytes)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-xs text-muted">
+                      {row.restartCount}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-xs">
+                      {update?.updateAvailable ? (
+                        <span
+                          className="text-degraded"
+                          title={`${update.currentVersion ?? "?"} → ${update.availableVersion ?? "?"}`}
+                        >
+                          Update
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

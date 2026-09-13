@@ -14,9 +14,9 @@ See [`Nerve-v1-Plan.md`](./Nerve-v1-Plan.md) for the full build plan.
 
 ## Status
 
-**Milestone 4 — Backup Integration** (current).
+**Milestone 6 — Polish** (current).
 
-Milestones 0–4 are implemented:
+Milestones 0–6 are implemented:
 
 - A Next.js + TypeScript application shell with a dark operations-console layout
 - Responsive navigation for **Overview**, **Containers**, **Backups**, and **Updates**
@@ -25,11 +25,12 @@ Milestones 0–4 are implemented:
 - WUD update tracking
 - Backup integration: an authenticated Offen webhook, SQLite persistence, and a
   real backups view (see **Backup integration** below)
+- Gluetun/VPN status monitoring
 - A basic YAML configuration loader
 - A production `Dockerfile` and `compose.yaml` stack
 
-Not yet implemented: Gluetun/VPN status, authentication, actions, alerts, and
-historical metrics. Those arrive in Milestones 5–7.
+Not yet implemented: authentication, actions, alerts, and historical metrics.
+Those arrive in Milestone 7.
 
 ---
 
@@ -222,11 +223,10 @@ src/
     backups/           # backups view
     ui/                # shared primitives (cards, status dots, metrics)
   lib/
-    config/            # YAML configuration loader + types
+    config/            # YAML configuration loader + types + matching
     db/                # SQLite + Drizzle schema, client, repository
-    integrations/      # docker + services + wud + backup adapters
+    integrations/      # docker + services + wud + backup + gluetun adapters
     health.ts          # status model helpers
-    mock/              # static placeholder data (VPN row, Milestone 5)
     utils.ts
   types/               # shared domain models (ContainerStatus, BackupRun, ...)
 config/
@@ -248,6 +248,6 @@ compose.yaml
 | 2         | Service health              | ✅     |
 | 3         | WUD integration             | ✅     |
 | 4         | Backup integration          | ✅     |
-| 5         | Gluetun                     | ⏳     |
-| 6         | Polish                      | ⏳     |
+| 5         | Gluetun                     | ✅     |
+| 6         | Polish                      | ✅     |
 | 7         | Deployment                  | ⏳     |

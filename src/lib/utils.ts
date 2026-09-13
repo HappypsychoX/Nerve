@@ -30,14 +30,34 @@ export function formatUptime(seconds: number | null | undefined): string {
   return `${minutes}m`;
 }
 
-export function formatDateTime(iso: string | null | undefined): string {
-  if (!iso) return "—";
+export function formatDateTime(
+  iso: string | number | null | undefined,
+): string {
+  if (iso === null || iso === undefined) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString(undefined, {
+    year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+export function formatRelative(
+  ms: number | null | undefined,
+  now = Date.now(),
+): string {
+  if (ms === null || ms === undefined) return "—";
+  const diff = Math.max(0, now - ms);
+  if (diff < 5000) return "just now";
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }

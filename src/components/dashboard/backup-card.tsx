@@ -1,10 +1,13 @@
 import { Archive } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
 import { Metric } from "@/components/ui/metric";
+import { Skeleton } from "@/components/ui/skeleton";
+import { UpdatedHint } from "@/components/ui/updated-hint";
 import { StatusPill } from "@/components/ui/status-dot";
 import { formatBytes, formatDateTime, formatUptime } from "@/lib/utils";
 import type { BackupsResponse } from "@/lib/integrations/backup/types";
 import type { BackupRun, BackupStorageStatus } from "@/types";
+import type { PolledMeta } from "@/hooks/use-polled";
 
 export function storageLabel(status: BackupStorageStatus): string {
   if (status === "success") return "ok";
@@ -19,13 +22,48 @@ function sourceLabel(latest: BackupRun): string {
   return "—";
 }
 
-export function BackupCard({ data }: { data: BackupsResponse }) {
+interface BackupCardProps {
+  data: BackupsResponse;
+  meta: PolledMeta;
+}
+
+export function BackupCard({ data, meta }: BackupCardProps) {
+  const { loading, error, stale, lastSuccessAt } = meta;
   const latest = data.latest;
+
+  if (loading) {
+    return (
+      <Card className="flex h-full flex-col">
+        <CardHeader title="Backup" />
+        <div className="flex-1 space-y-4 px-4 py-4">
+          <Skeleton className="h-6 w-24" />
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (error && lastSuccessAt === null) {
+    return (
+      <Card className="flex h-full flex-col">
+        <CardHeader title="Backup" />
+        <div className="flex-1 px-4 py-4 text-sm text-muted">
+          Unavailable — retrying
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="flex h-full flex-col">
       <CardHeader
         title="Backup"
+        hint={<UpdatedHint lastSuccessAt={lastSuccessAt} stale={stale} />}
         action={<Archive className="h-4 w-4 text-faint" />}
       />
       <div className="flex-1 space-y-4 px-4 py-4">

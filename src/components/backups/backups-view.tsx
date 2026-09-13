@@ -2,6 +2,7 @@
 
 import { Card, CardHeader } from "@/components/ui/card";
 import { Metric } from "@/components/ui/metric";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StatusDot, StatusPill } from "@/components/ui/status-dot";
 import { useBackups } from "@/hooks/use-backups";
 import { formatBytes, formatDateTime, formatUptime } from "@/lib/utils";
@@ -22,6 +23,8 @@ function storageLabel(status: BackupStorageStatus): string {
 
 export function BackupsView() {
   const backups = useBackups();
+  const loading = backups.loading;
+  const hasData = backups.lastSuccessAt !== null;
 
   return (
     <div className="space-y-4">
@@ -53,7 +56,16 @@ export function BackupsView() {
 
       <Card>
         <CardHeader title="Latest Result" />
-        {backups.latest ? (
+        {loading && !hasData ? (
+          <div className="space-y-3 px-4 py-4">
+            <Skeleton className="h-4 w-24" />
+            <div className="grid grid-cols-2 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          </div>
+        ) : backups.latest ? (
           <div className="space-y-3 px-4 py-4">
             <div className="flex items-center gap-2.5">
               <StatusDot
@@ -114,50 +126,60 @@ export function BackupsView() {
           title="History"
           hint={backups.runs.length > 0 ? `${backups.runs.length} recorded` : undefined}
         />
-        {backups.runs.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-muted">
-            No backup runs yet
-          </div>
-        ) : (
-          <div className="divide-y divide-line">
-            <div className="grid grid-cols-5 gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted">
-              <span>Status</span>
-              <span>When</span>
-              <span>Source</span>
-              <span>Size</span>
-              <span>Duration</span>
-            </div>
-            {backups.runs.map((run) => (
-              <div key={run.id} className="px-4 py-2.5 hover:bg-surface-2/50">
-                <div className="grid grid-cols-5 gap-3 text-sm">
-                  <span className="flex items-center gap-2">
-                    <StatusDot
-                      health={run.status === "success" ? "healthy" : "degraded"}
-                    />
-                    <span className="text-fg">
-                      {run.status === "success" ? "Success" : "Failed"}
-                    </span>
-                  </span>
-                  <span className="font-mono text-muted">
-                    {formatDateTime(new Date(run.startedAt).toISOString())}
-                  </span>
-                  <span className="text-muted">{sourceLabel(run.source)}</span>
-                  <span className="font-mono text-muted">
-                    {formatBytes(run.sizeBytes)}
-                  </span>
-                  <span className="font-mono text-muted">
-                    {formatUptime(run.durationSeconds)}
-                  </span>
-                </div>
-                {run.error ? (
-                  <div className="mt-1 truncate text-xs text-degraded">
-                    {run.error}
-                  </div>
-                ) : null}
+        <div className="overflow-x-auto scrollbar-thin">
+          <div className="min-w-[560px]">
+            {loading && !hasData ? (
+              <div className="space-y-2 px-4 py-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-full" />
+                ))}
               </div>
-            ))}
+            ) : backups.runs.length === 0 ? (
+              <div className="px-4 py-8 text-center text-sm text-muted">
+                No backup runs yet
+              </div>
+            ) : (
+              <div className="divide-y divide-line">
+                <div className="grid grid-cols-5 gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted">
+                  <span>Status</span>
+                  <span>When</span>
+                  <span>Source</span>
+                  <span>Size</span>
+                  <span>Duration</span>
+                </div>
+                {backups.runs.map((run) => (
+                  <div key={run.id} className="px-4 py-2.5 hover:bg-surface-2/50">
+                    <div className="grid grid-cols-5 gap-3 text-sm">
+                      <span className="flex items-center gap-2">
+                        <StatusDot
+                          health={run.status === "success" ? "healthy" : "degraded"}
+                        />
+                        <span className="text-fg">
+                          {run.status === "success" ? "Success" : "Failed"}
+                        </span>
+                      </span>
+                      <span className="font-mono text-muted">
+                        {formatDateTime(new Date(run.startedAt).toISOString())}
+                      </span>
+                      <span className="text-muted">{sourceLabel(run.source)}</span>
+                      <span className="font-mono text-muted">
+                        {formatBytes(run.sizeBytes)}
+                      </span>
+                      <span className="font-mono text-muted">
+                        {formatUptime(run.durationSeconds)}
+                      </span>
+                    </div>
+                    {run.error ? (
+                      <div className="mt-1 truncate text-xs text-degraded">
+                        {run.error}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </Card>
     </div>
   );

@@ -1149,6 +1149,91 @@ Add:
 
 The dashboard feels like a real tool rather than a programming project wearing a dashboard costume.
 
+### Pre-Milestone-6 code review — fixes to include
+
+Review of the Milestone 5 codebase surfaced the following. Items are grouped
+by type; the named polish deliverables above are cross-referenced where they
+overlap.
+
+#### Correctness & behavior bugs
+
+- [ ] **Overall health ignores container health.** `computeOverallHealth`
+  (`src/lib/health.ts`) uses Docker *reachability* plus critical *service* HTTP
+  checks but never container state. The containers route
+  (`src/app/api/docker/containers/route.ts`) always returns `health: "healthy"`
+  when the list call succeeds, so a crashed/unhealthy critical container never
+  degrades status. Plan §13/§14 requires "critical container unhealthy →
+  Degraded." Feed unhealthy/stopped-critical counts into the Docker row and
+  overall health.
+- [ ] **System status row overflows its grid.** `Overview` passes 5 rows into
+  `SystemStatus`, laid out `lg:grid-cols-4` with `lg:divide-x`
+  (`system-status.tsx`). The 5th wraps and leaves dangling dividers. Use a
+  5-column layout.
+- [ ] **Duplicate polling between top bar and dashboard.** `Topbar`'s
+  `useOverallHealth` independently polls docker-health, services, backups, and
+  gluetun — in addition to the same endpoints the Overview cards poll. Doubles
+  request load and can make the header pill disagree with the cards. Fetch once
+  (shared state/context).
+- [ ] **Container grouping rarely matches.** `containerGroupForName`
+  (`grouping.ts`) requires `service.id` to exactly equal the full lowercased
+  container name. Compose prefixes/suffixes mean most containers fall into
+  "Other." Match by configured container name / alias / substring.
+
+#### Functional gaps vs. plan
+
+- [ ] **Attention panel only surfaces WUD updates** (`attention-panel.tsx`,
+  `overview.tsx`). Plan §11 intends it to also surface unhealthy/stopped
+  critical containers, backup failure, VPN down, and offline critical services.
+- [ ] **"Update available" missing from containers view.** Plan §3/§12 lists it
+  as a per-container column. WUD data is never merged into `ContainerRow`;
+  neither `container-table.tsx` nor `containers-preview.tsx` shows it.
+- [ ] **Containers preview is unbounded and lacks non-happy states.**
+  `ContainersPreview` renders every container (not a preview) and shows an empty
+  card when Docker is offline or loading. Cap the list; add offline/empty states.
+
+#### Named polish deliverables (still outstanding)
+
+- [ ] **Skeleton loading states** — first load shows `"Loading…"`/`"Checking…"`
+  text or empty cards. Add skeletons driven by the `loading` flags hooks already
+  return.
+- [ ] **Clean error states** — no `error.tsx`, `loading.tsx`, or `not-found.tsx`
+  route boundaries in `src/app`. Hooks also swallow fetch errors silently
+  (`catch {}`) and keep stale data with no signal.
+- [ ] **Stale-data indicators** — `fetchedAt` is returned for WUD/VPN but never
+  surfaced, and other integrations don't track it. Add per-card "updated Xs ago
+  / stale" driven by fetch timestamps + failure tracking.
+- [ ] **Status tooltips** — none exist. `StatusDot` is `aria-hidden` with no
+  title, so status is color-only (also an accessibility issue). Add tooltips
+  explaining each state.
+- [ ] **Favicon / logo / visual identity** — only a bare `icon.svg`; the "logo"
+  is a generic Lucide `Activity` glyph. The `grid-bg` technical texture is
+  defined but only used by dead code, not the app shell. Establish the Nerve
+  wordmark/identity and apply the grid aesthetic.
+- [ ] **Timestamp formatting** — `formatDateTime` drops the year; relative
+  "x ago" only exists in backups. Unify: relative inline, absolute (incl. year)
+  on hover.
+- [ ] **Responsive layout** — `backups-view` (`grid-cols-5`) and `updates-view`
+  (`grid-cols-3`) use fixed columns that crowd on mobile.
+
+#### Code health
+
+- [ ] **`usePolled` is copy-pasted into 5 hook files** (`use-docker`,
+  `use-services`, `use-vpn`, `use-backups`, `use-updates`). Extract one shared
+  hook and add error/stale tracking there (see above).
+- [ ] **Remove dead code** — `src/components/ui/placeholder-page.tsx` is unused.
+- [ ] **Stale sidebar footer** — hardcoded `"Skeleton · Milestone 0"`
+  (`sidebar.tsx`). Replace with version/build or remove.
+- [ ] **`StatusDot` `pulse` prop is never used** — degraded/offline dots never
+  pulse. Wire it up or remove the prop.
+- [ ] **No test runner / tests.** Pure logic (`health.ts`, `docker-summary.ts`,
+  `backup/status.ts`, normalizers) is highly testable and would lock in the
+  status model before Milestone 7. Optional, but low-cost.
+
+**Highest value:** the functional gaps (container-health-in-status, attention
+panel, update column) and the named polish deliverables (skeletons, error/stale
+states, tooltips, identity). The grid overflow and duplicate polling are quick
+wins.
+
 ---
 
 ## Milestone 7 — Deployment

@@ -2,9 +2,14 @@
 
 import { useMemo } from "react";
 import type { ServiceConfig } from "@/lib/config";
-import type { AttentionItem, SystemStatusRow } from "@/types";
+import type { SystemStatusRow } from "@/types";
 import { composeDockerSummary } from "@/lib/docker-summary";
-import { useDockerContainers, useDockerSystem } from "@/hooks/use-docker";
+import { buildAttentionItems } from "@/lib/attention";
+import {
+  useDockerContainers,
+  useDockerHealth,
+  useDockerSystem,
+} from "@/hooks/use-docker";
 import { useServicesHealth } from "@/hooks/use-services";
 import { useUpdates } from "@/hooks/use-updates";
 import { useBackups } from "@/hooks/use-backups";
@@ -22,20 +27,28 @@ import { QuickAccess } from "@/components/dashboard/quick-access";
 export function Overview({ quickLinks }: { quickLinks: ServiceConfig[] }) {
   const containers = useDockerContainers();
   const system = useDockerSystem();
-  const { services } = useServicesHealth();
+  const services = useServicesHealth();
   const updates = useUpdates();
   const backups = useBackups();
   const vpn = useVpn();
+  const dockerHealth = useDockerHealth();
   const summary = composeDockerSummary(containers, system);
+
+  const criticalDown =
+    containers.criticalCounts.stopped +
+    containers.criticalCounts.unhealthy +
+    containers.criticalCounts.restarting;
 
   const dockerRow: SystemStatusRow = {
     id: "docker",
     label: "Docker",
     health: containers.health,
-    detail: `${containers.counts.running} running / ${containers.counts.stopped} stopped`,
+    detail: `${containers.counts.running} running / ${containers.counts.stopped} stopped${
+      criticalDown > 0 ? ` · ${criticalDown} critical down` : ""
+    }`,
   };
 
-  const servicesSummary = summarizeServices(services);
+  const servicesSummary = summarizeServices(services.services);
   const servicesRow: SystemStatusRow = {
     id: "services",
     label: "Services",
@@ -64,26 +77,17 @@ export function Overview({ quickLinks }: { quickLinks: ServiceConfig[] }) {
     detail: vpn.status.publicIp ?? vpn.detail,
   };
 
-  const attention = useMemo<AttentionItem[]>(() => {
-    const items: AttentionItem[] = [];
-    if (updates.count > 0) {
-      items.push({
-        id: "wud",
-        label: "WUD",
-        detail: `${updates.count} update${updates.count === 1 ? "" : "s"}`,
-      });
-    }
-    for (const u of updates.updates) {
-      if (u.updateAvailable) {
-        items.push({
-          id: `update-${u.containerId}`,
-          label: u.containerName,
-          detail: "Update available",
-        });
-      }
-    }
-    return items;
-  }, [updates]);
+  const attention = useMemo(
+    () =>
+      buildAttentionItems({
+        containers: containers.containers,
+        updates: updates.updates,
+        backups,
+        vpn,
+        services: services.services,
+      }),
+    [containers.containers, updates.updates, backups, vpn, services.services],
+  );
 
   return (
     <div className="space-y-4">
@@ -93,14 +97,22 @@ export function Overview({ quickLinks }: { quickLinks: ServiceConfig[] }) {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <AttentionPanel items={attention} />
-        <DockerPanel summary={summary} />
-        <BackupCard data={backups} />
-        <VpnCard data={vpn} />
+        <DockerPanel summary={summary} meta={containers} health={containers.health} />
+        <BackupCard data={backups} meta={backups} />
+        <VpnCard data={vpn} meta={vpn} />
       </div>
 
-      <ServicesPanel services={services} />
+      <ServicesPanel services={services.services} meta={services} />
 
-      <ContainersPreview containers={containers.containers} />
+      <ContainersPreview
+        containers={containers.containers}
+        loading={containers.loading}
+        error={containers.error}
+        stale={containers.stale}
+        lastSuccessAt={containers.lastSuccessAt}
+        dockerHealth={dockerHealth}
+        updates={updates.updates}
+      />
 
       <QuickAccess links={quickLinks} />
     </div>

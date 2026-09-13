@@ -52,6 +52,7 @@ export interface DockerVersion {
 // --- API DTOs (route response shapes; shared with client hooks) ---
 export interface ContainerRow extends ContainerStatus {
   group: ServiceGroup;
+  critical: boolean;
 }
 
 export interface DockerHealthResponse {
@@ -64,6 +65,7 @@ export interface DockerContainersResponse {
   containers: ContainerRow[];
   counts: DockerContainerCounts;
   aggregate: DockerAggregate;
+  criticalCounts: { stopped: number; unhealthy: number; restarting: number };
 }
 
 export interface DockerSystemResponse {

@@ -27,7 +27,7 @@ export function CardHeader({
   className,
 }: {
   title: string;
-  hint?: string;
+  hint?: ReactNode;
   action?: ReactNode;
   className?: string;
 }) {

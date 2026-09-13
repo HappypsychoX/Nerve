@@ -3,10 +3,12 @@
 import { useMemo, useState } from "react";
 import type { ServiceGroupConfig } from "@/lib/config";
 import { useDockerContainers } from "@/hooks/use-docker";
+import { useUpdates } from "@/hooks/use-updates";
 import { ContainerTable } from "./container-table";
 
 export function ContainersView({ groups }: { groups: ServiceGroupConfig[] }) {
-  const { health, containers } = useDockerContainers();
+  const { health, containers, loading } = useDockerContainers();
+  const updates = useUpdates();
   const [query, setQuery] = useState("");
   const [group, setGroup] = useState("all");
   const [status, setStatus] = useState("all");
@@ -35,6 +37,8 @@ export function ContainersView({ groups }: { groups: ServiceGroupConfig[] }) {
       rows={filtered}
       groups={groups}
       health={health}
+      loading={loading}
+      updates={updates.updates}
       query={query}
       group={group}
       status={status}

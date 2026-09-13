@@ -1,3 +1,4 @@
+import { formatRelative } from "@/lib/utils";
 import type { BackupRun, BackupSource, IntegrationHealth } from "@/types";
 
 export const BACKUP_WATCH_PREFIX = "volume-backup-";
@@ -17,18 +18,6 @@ function labelFor(source: EffectiveSource): string {
 function thresholdFor(source: EffectiveSource): number {
   if (source === "local") return BACKUP_RECENT_LOCAL_MS;
   return BACKUP_RECENT_CLOUD_MS;
-}
-
-// Relative so the server-rendered detail never disagrees with the client-side
-// absolute timestamps (which the browser renders in the viewer's timezone).
-function relativeAge(ms: number, now: number): string {
-  const diff = Math.max(0, now - ms);
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
 }
 
 export function sourceFromContainerName(name: string): BackupSource | null {
@@ -101,7 +90,7 @@ export function deriveBackupStatus(
   if (anyHealthy) {
     const detail =
       latestHealthyStartedAt !== null
-        ? `Latest ${relativeAge(latestHealthyStartedAt, now)}`
+        ? `Latest ${formatRelative(latestHealthyStartedAt, now)}`
         : "Healthy";
     return { health: "healthy", detail, containerDown: false };
   }

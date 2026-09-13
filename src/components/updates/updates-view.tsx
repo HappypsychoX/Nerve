@@ -2,6 +2,7 @@
 
 import { ExternalLink } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-dot";
 import { useUpdates } from "@/hooks/use-updates";
 import { formatDateTime } from "@/lib/utils";
@@ -9,6 +10,8 @@ import { formatDateTime } from "@/lib/utils";
 export function UpdatesView() {
   const updates = useUpdates();
   const pending = updates.updates.filter((u) => u.updateAvailable);
+  const loading = updates.loading;
+  const hasData = updates.lastSuccessAt !== null;
 
   return (
     <div className="space-y-4">
@@ -43,7 +46,13 @@ export function UpdatesView() {
 
       <Card>
         <CardHeader title="Containers" hint={`${pending.length} listed`} />
-        {updates.health === "unknown" ? (
+        {loading && !hasData ? (
+          <div className="space-y-2 px-4 py-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-8 w-full" />
+            ))}
+          </div>
+        ) : updates.health === "unknown" ? (
           <div className="px-4 py-8 text-center text-sm text-muted">
             {updates.detail === "Not configured"
               ? "WUD not configured"
@@ -54,26 +63,28 @@ export function UpdatesView() {
             No updates available
           </div>
         ) : (
-          <div className="divide-y divide-line">
-            <div className="grid grid-cols-3 gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted">
-              <span>Container</span>
-              <span>Current</span>
-              <span>Available</span>
-            </div>
-            {pending.map((u) => (
-              <div
-                key={u.containerId}
-                className="grid grid-cols-3 gap-3 px-4 py-2.5 text-sm hover:bg-surface-2/50"
-              >
-                <span className="truncate text-fg">{u.containerName}</span>
-                <span className="truncate font-mono text-muted">
-                  {u.currentVersion ?? "—"}
-                </span>
-                <span className="truncate font-mono text-degraded">
-                  {u.availableVersion ?? "—"}
-                </span>
+          <div className="overflow-x-auto scrollbar-thin">
+            <div className="min-w-[480px] divide-y divide-line">
+              <div className="grid grid-cols-3 gap-3 px-4 py-2 text-xs font-medium uppercase tracking-wider text-muted">
+                <span>Container</span>
+                <span>Current</span>
+                <span>Available</span>
               </div>
-            ))}
+              {pending.map((u) => (
+                <div
+                  key={u.containerId}
+                  className="grid grid-cols-3 gap-3 px-4 py-2.5 text-sm hover:bg-surface-2/50"
+                >
+                  <span className="truncate text-fg">{u.containerName}</span>
+                  <span className="truncate font-mono text-muted">
+                    {u.currentVersion ?? "—"}
+                  </span>
+                  <span className="truncate font-mono text-degraded">
+                    {u.availableVersion ?? "—"}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </Card>
