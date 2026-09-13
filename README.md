@@ -14,9 +14,9 @@ See [`Nerve-v1-Plan.md`](./Nerve-v1-Plan.md) for the full build plan.
 
 ## Status
 
-**Milestone 6 — Polish** (current).
+**v1.0.0 — Milestone 7 (Deployment) complete.**
 
-Milestones 0–6 are implemented:
+Milestones 0–7 are implemented:
 
 - A Next.js + TypeScript application shell with a dark operations-console layout
 - Responsive navigation for **Overview**, **Containers**, **Backups**, and **Updates**
@@ -28,9 +28,13 @@ Milestones 0–6 are implemented:
 - Gluetun/VPN status monitoring
 - A basic YAML configuration loader
 - A production `Dockerfile` and `compose.yaml` stack
+- Deployment readiness: Portainer stack documentation, container healthchecks,
+  restart policy, non-root standalone image, and the `v1.0.0` release tag
 
-Not yet implemented: authentication, actions, alerts, and historical metrics.
-Those arrive in Milestone 7.
+Not implemented, by design: Nerve V1 has no authentication, no actions, no
+alerts, and no historical metrics (plan §4, "Explicitly NOT in V1"). Actions,
+alerts, and history are on the post-V1 roadmap (plan §20) — they were never
+part of Milestone 7.
 
 ---
 
@@ -62,6 +66,7 @@ Useful scripts:
 | `npm run build` | Production build                   |
 | `npm run start` | Serve a production build           |
 | `npm run lint`  | Run ESLint                         |
+| `npm test`      | Run unit tests (Vitest)            |
 
 ---
 
@@ -85,6 +90,42 @@ Open http://localhost:3001 (`compose.yaml` maps host `3001` to container `3000`)
 To inject secrets and connection details, create a `.env` from
 [`.env.example`](./.env.example); `docker compose` reads it automatically.
 
+For Portainer deployment, see **Deployment (Portainer)** below.
+
+---
+
+## Deployment (Portainer)
+
+Nerve is deployed as a Portainer stack built from [`compose.yaml`](./compose.yaml).
+
+1. In Portainer, go to **Stacks → Add stack**. Name the stack `nerve`
+   (lowercase — the stack name becomes the compose network prefix,
+   `nerve_nerve-internal`, which the backup integration below depends on).
+   Choose **Web editor** and paste the contents of `compose.yaml`.
+2. Under **Environment variables**, add the secrets from
+   [`.env.example`](./.env.example) — at minimum:
+   - `OFFEN_WEBHOOK_TOKEN` — shared secret for the backup webhook (see
+     **Backup integration** below)
+   - `GLUETUN_API_KEY` — read-only Gluetun API key (see
+     **Gluetun read-only access** below)
+   - Optional: `WUD_USERNAME` / `WUD_PASSWORD` if your WUD instance requires
+     authentication. `WUD_URL` defaults to `http://wud:3000` in `compose.yaml`;
+     edit the stack if your WUD runs elsewhere. `GLUETUN_URL` defaults to
+     `http://gluetun:8000`.
+
+   Keep secrets in the stack's environment variables, never in the compose
+   YAML itself.
+3. Click **Deploy the stack**. Portainer builds the `nerve` image and creates
+   the `nerve-config` and `nerve-data` named volumes on first deploy.
+4. Wait for the `nerve` container to show as **healthy** (the healthcheck polls
+   `/api/health`; `start_period` is 20s), then open `http://<server-ip>:3001`.
+5. To customize service names, URLs, and groups, edit `nerve.yaml` inside the
+   `nerve-config` volume (Portainer → Volumes → Browse) — see
+   **Configuration**.
+
+Both services use `restart: unless-stopped`, so the stack comes back
+automatically after a host reboot.
+
 ---
 
 ## Configuration
@@ -106,6 +147,50 @@ variables for secrets and connection details.
    integration URLs (Docker, WUD, Gluetun, Offen) live here, never in YAML.
 
 Display overrides: `NERVE_TITLE`, `NERVE_SERVER_NAME`.
+
+---
+
+## Gluetun read-only access
+
+Nerve reads VPN status from Gluetun's control server (`GLUETUN_URL`, default
+`http://gluetun:8000`) using a **read-only, role-scoped API key** sent as the
+`X-API-Key` header. It calls exactly two routes and nothing else:
+
+- `GET /v1/vpn/status`
+- `GET /v1/publicip/ip`
+
+Setup:
+
+1. Generate a key on the Docker host:
+
+   ```bash
+   docker run --rm qmcgaw/gluetun genkey
+   ```
+
+2. Register the key in Gluetun's control-server authentication configuration,
+   scoped to only the two GET routes above (see Gluetun's control server
+   authentication documentation for the exact syntax of your Gluetun version).
+   Do not grant Nerve's key any other route — Nerve never writes to Gluetun.
+3. Set `GLUETUN_API_KEY=<key>` in Nerve's environment (Portainer stack
+   environment variables, or `.env` for local compose). Never commit it.
+4. Recreate the Nerve container. The VPN card shows connection state and the
+   public VPN IP. If the key is missing or rejected (401/403), the card
+   degrades gracefully — a broken Gluetun integration never blocks the rest of
+   the dashboard.
+
+## Network exposure
+
+Nerve is a LAN-only dashboard. "No Internet Exposure" (plan §4) is a hard rule:
+
+- Reach Nerve at `http://<server-ip>:3001` from the LAN only.
+- Do **not** create a proxy host for Nerve in Nginx Proxy Manager or any other
+  public reverse proxy, and do **not** port-forward port `3001` on your router.
+- For remote access, use your meshnet: install the mesh client on the remote
+  device and open `http://<server-ip>:3001` over the mesh network. No inbound
+  ports are opened on the server.
+- Inside compose, only the `3001:3000` host mapping is published; the
+  `nerve-internal` network is private, and the Docker socket proxy publishes
+  no ports at all.
 
 ---
 
@@ -173,6 +258,8 @@ services:
 
   This is not persistent: to survive a stack redeploy, declare the external
   network in the backup stack's own compose file (`networks:` + `services.*.networks`).
+
+The `nerve_` prefix comes from the Portainer stack name `nerve` (see **Deployment (Portainer)**). If you named the stack differently, adjust the network name accordingly.
 
 ### Secret
 
@@ -250,4 +337,4 @@ compose.yaml
 | 4         | Backup integration          | ✅     |
 | 5         | Gluetun                     | ✅     |
 | 6         | Polish                      | ✅     |
-| 7         | Deployment                  | ⏳     |
+| 7         | Deployment                  | ✅     |
