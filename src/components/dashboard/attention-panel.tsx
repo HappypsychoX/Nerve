@@ -21,7 +21,11 @@ export function AttentionPanel({ items }: { items: AttentionItem[] }) {
       <CardHeader
         title="Attention"
         hint={`${items.length}`}
-        action={<AlertTriangle className="h-4 w-4 text-degraded" />}
+        action={
+          <AlertTriangle
+            className={`h-4 w-4 ${items.length ? "text-degraded" : "text-faint"}`}
+          />
+        }
       />
       <div className="flex-1 divide-y divide-line">
         {items.length === 0 ? (

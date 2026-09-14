@@ -14,7 +14,7 @@ See [`Nerve-v1-Plan.md`](./Nerve-v1-Plan.md) for the full build plan.
 
 ## Status
 
-**v1.0.0 — Milestone 7 (Deployment) complete.**
+**v1.0.1 — Milestone 7 (Deployment) complete.**
 
 Milestones 0–7 are implemented:
 
@@ -29,7 +29,7 @@ Milestones 0–7 are implemented:
 - A basic YAML configuration loader
 - A production `Dockerfile` and `compose.yaml` stack
 - Deployment readiness: Portainer stack documentation, container healthchecks,
-  restart policy, non-root standalone image, and the `v1.0.0` release tag
+  restart policy, non-root standalone image, and the `v1.0.1` release tag
 
 Not implemented, by design: Nerve V1 has no authentication, no actions, no
 alerts, and no historical metrics (plan §4, "Explicitly NOT in V1"). Actions,
