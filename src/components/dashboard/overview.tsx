@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { ServiceConfig } from "@/lib/config";
+import type { JellyfinDisplayConfig, ServiceConfig } from "@/lib/config";
 import type { SystemStatusRow } from "@/types";
 import { composeDockerSummary } from "@/lib/docker-summary";
 import { buildAttentionItems } from "@/lib/attention";
@@ -23,8 +23,9 @@ import { VpnCard } from "@/components/dashboard/vpn-card";
 import { ContainersPreview } from "@/components/dashboard/containers-preview";
 import { ServicesPanel } from "@/components/dashboard/services-panel";
 import { QuickAccess } from "@/components/dashboard/quick-access";
+import { JellyfinSection } from "@/components/dashboard/jellyfin/jellyfin-section";
 
-export function Overview({ quickLinks }: { quickLinks: ServiceConfig[] }) {
+export function Overview({ quickLinks, jellyfin }: { quickLinks: ServiceConfig[]; jellyfin: JellyfinDisplayConfig }) {
   const containers = useDockerContainers();
   const system = useDockerSystem();
   const services = useServicesHealth();
@@ -101,6 +102,8 @@ export function Overview({ quickLinks }: { quickLinks: ServiceConfig[] }) {
         <BackupCard data={backups} meta={backups} />
         <VpnCard data={vpn} meta={vpn} />
       </div>
+
+      <JellyfinSection config={jellyfin} />
 
       <ServicesPanel services={services.services} meta={services} />
 

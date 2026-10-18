@@ -1,6 +1,6 @@
 # Nerve v1.1 — Jellyfin Integration
-**Status:** Real-server verification gate (M0) completed, revised 2026-10-17. **M1 (integration & configuration) and M2 (API routes) implemented and validated 2026-10-18; M3–M5 remain.**  
-**Progress:** M1 and M2 are implemented and validated under this specification; M3 (dashboard/polling), M4 (details/posters), and M5 (docs/version bump) remain to be built. The M1–M5 requirements below are unchanged and still binding.  
+**Status:** Real-server verification gate (M0) completed, revised 2026-10-17. **M1 (integration & configuration), M2 (API routes), and M3 (dashboard/polling) implemented and validated 2026-10-18; M4–M5 remain.**  
+**Progress:** M1, M2, and M3 are implemented and validated under this specification; M4 (technical details/posters) and M5 (docs/version bump) remain to be built. The M1–M5 requirements below are unchanged and still binding.  
 **Basis:** Original v1.1 specification and Claude Opus 5.5 planning review of Nerve `master`, v1.0.1 (`7681fb5`).
 
 ## 1. Release goal and locked decisions
@@ -233,6 +233,20 @@ Verified server version `10.11.11`, successful token authentication/session quer
 | `src/components/dashboard/jellyfin/jellyfin-section.tsx` (new) | Stable expandable shell, accessibility and state handling |
 | `jellyfin-summary.tsx`, `jellyfin-session.tsx` (new) | Counts and session cards |
 | `src/components/dashboard/overview.tsx`, `src/app/page.tsx` | Insert section at locked placement; pass display-only flags |
+
+**M3 completion record (2026-10-18):**
+
+- **Changed files:**
+  - Modified `src/hooks/use-polled.ts` — added a per-effect in-flight guard so a tick is skipped while the previous request is still in flight. Implemented as an effect-local closure (not a shared ref) so an aborted request from a prior effect run can never clear the current run's guard. No regression to the 7 existing consumers (all poll constant URL/interval).
+  - Added `src/hooks/use-jellyfin.ts` — `JELLYFIN_POLL_INTERVAL_MS = 10000`; Overview-scoped polling of only `/api/jellyfin/sessions`; last-good `online` snapshot retained and never overwritten by non-online payloads; current status kept separate from last-success time; staleness at 3× interval (30 s); zero requests when `enabled` is false.
+  - Added `src/lib/jellyfin-display.ts` (+ `jellyfin-display.test.ts`) — pure Node-testable helpers: status→label/health maps, playback-method labels, progress percent (null for unknown/non-finite duration; never NaN or a fake 0%), playback-time formatting, TV-context formatting, and session grouping.
+  - Added `src/components/dashboard/jellyfin/jellyfin-section.tsx` — full-width expandable Card shell with a native button carrying `aria-expanded`/`aria-controls`; local expanded state stable across polling/loading/failure; explicit online/offline/unauthorized/unconfigured/disabled/error states; stale last-good banner; "Nothing currently playing" empty state; idle list hidden (count preserved) when `showIdleClients` is false.
+  - Added `src/components/dashboard/jellyfin/jellyfin-summary.tsx` (playing/paused/idle/transcoding counts) and `jellyfin-session.tsx` (fixed 2:3 poster placeholder, title, TV context, user, client/device, state, progress, and playback method; accessible truncation; no NaN/0%).
+  - Modified `src/components/dashboard/overview.tsx` and `src/app/page.tsx` — full-width section inserted after the 2×2 grid and before `ServicesPanel`; passes the display-only `JellyfinDisplayConfig` flags.
+- **Locked requirements preserved:** 10 s polling only while Overview is mounted; no Jellyfin in `DashboardProvider`; no duplicate Attention/`SystemStatus`/`computeOverallHealth` changes; health not independently polled from the client; last-good snapshot never overwritten by offline/unauthorized/error/unconfigured payloads; anonymous clients shown as "Unidentified client"; no client-side interpolation or history; unknown duration produces no percentage and never NaN; M3/M4 boundary respected (fixed-size placeholder and playback-method label only — no source/output codecs, transcode reasons, or poster rendering).
+- **Test results:** `npm test` → 177 passing (21 new display-helper tests covering progress null/NaN/clamp, time formatting, method labels, TV context, session grouping, and status maps). `npm run lint` clean; `npm run build` clean. Independent review found no blockers or warnings; four minor review NITs were addressed (per-effect in-flight guard, `aria-controls` target always mounted via `hidden`, finite guard in TV context, empty-state message keyed to total sessions).
+- **Blockers:** none.
+- **Remaining milestones:** M4 (technical details/posters), M5 (docs/version bump). The §8 real-server manual matrix (live playing/paused/idle states, navigation away from Overview stopping Jellyfin polling, keyboard and narrow-viewport accessibility, and stale last-good recovery) is a pre-release validation step that cannot be exercised in the Node test harness and remains outstanding.
 
 ### M4 — Technical details and posters
 | File | Required work |
