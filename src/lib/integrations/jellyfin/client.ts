@@ -3,6 +3,11 @@ import type { JellyfinPublicInfo, JellyfinSessionUpstream } from "./types";
 export const JELLYFIN_TIMEOUT_MS = 5000;
 export const JELLYFIN_ACTIVE_WINDOW_SECONDS = 960;
 export const JELLYFIN_MAX_IMAGE_BYTES = 2 * 1024 * 1024;
+// Server-fixed image constraints: the proxy requests a bounded width and
+// quality from Jellyfin so responses stay small and cannot be inflated by
+// arbitrary query parameters forwarded from the browser.
+export const JELLYFIN_IMAGE_MAX_WIDTH = 600;
+export const JELLYFIN_IMAGE_QUALITY = 80;
 
 const JELLYFIN_IMAGE_CONTENT_TYPES: readonly string[] = [
   "image/jpeg",
@@ -190,14 +195,11 @@ async function readBoundedBody(
   return { ok: true, data: combined.buffer };
 }
 
-export async function fetchJellyfinPrimaryImage(
-  itemId: unknown,
-  tag: unknown,
+async function fetchPrimaryImageOnce(
+  itemId: string,
+  tag: string,
+  withAuth: boolean,
 ): Promise<JellyfinImageResult> {
-  if (!isValidJellyfinItemId(itemId) || !isValidJellyfinImageTag(tag)) {
-    return { ok: false, error: "http", status: null };
-  }
-
   const base = jellyfinBaseUrl();
   if (!base) return { ok: false, error: "http", status: null };
 
@@ -206,14 +208,13 @@ export async function fetchJellyfinPrimaryImage(
 
   try {
     const res = await fetch(
-      `${base}/Items/${itemId}/Images/Primary?tag=${encodeURIComponent(tag)}`,
+      `${base}/Items/${itemId}/Images/Primary?tag=${encodeURIComponent(tag)}&maxWidth=${JELLYFIN_IMAGE_MAX_WIDTH}&quality=${JELLYFIN_IMAGE_QUALITY}`,
       {
         method: "GET",
         cache: "no-store",
         signal: controller.signal,
         redirect: "manual",
-        // Artwork is typically served without authentication; never attach
-        // the API key to image requests.
+        headers: withAuth ? jellyfinAuthHeader() : undefined,
       },
     );
 
@@ -246,4 +247,24 @@ export async function fetchJellyfinPrimaryImage(
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function fetchJellyfinPrimaryImage(
+  itemId: unknown,
+  tag: unknown,
+): Promise<JellyfinImageResult> {
+  if (!isValidJellyfinItemId(itemId) || !isValidJellyfinImageTag(tag)) {
+    return { ok: false, error: "http", status: null };
+  }
+
+  // Artwork is normally served without authentication; try that first so the
+  // API key is not attached unnecessarily. If the server requires auth (401 or
+  // 403), retry with the server-side token only — the key never leaves the
+  // server and redirects are never followed.
+  const unauthenticated = await fetchPrimaryImageOnce(itemId, tag, false);
+  if (unauthenticated.ok) return unauthenticated;
+  if (unauthenticated.error !== "auth") return unauthenticated;
+
+  if (!jellyfinApiKey()) return unauthenticated;
+  return fetchPrimaryImageOnce(itemId, tag, true);
 }

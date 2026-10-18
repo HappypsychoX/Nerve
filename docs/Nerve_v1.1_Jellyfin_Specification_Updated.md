@@ -1,6 +1,6 @@
 # Nerve v1.1 — Jellyfin Integration
-**Status:** Real-server verification gate (M0) completed, revised 2026-10-17. **M1 (integration & configuration) implemented and validated 2026-10-18; M2–M5 remain.**  
-**Progress:** M1 is implemented and validated under this specification; M2 (API), M3 (dashboard/polling), M4 (details/posters), and M5 (docs/version bump) remain to be built. The M1–M5 requirements below are unchanged and still binding.  
+**Status:** Real-server verification gate (M0) completed, revised 2026-10-17. **M1 (integration & configuration) and M2 (API routes) implemented and validated 2026-10-18; M3–M5 remain.**  
+**Progress:** M1 and M2 are implemented and validated under this specification; M3 (dashboard/polling), M4 (details/posters), and M5 (docs/version bump) remain to be built. The M1–M5 requirements below are unchanged and still binding.  
 **Basis:** Original v1.1 specification and Claude Opus 5.5 planning review of Nerve `master`, v1.0.1 (`7681fb5`).
 
 ## 1. Release goal and locked decisions
@@ -208,6 +208,22 @@ Verified server version `10.11.11`, successful token authentication/session quer
 | `src/app/api/jellyfin/sessions/route.ts` (new) | GET, normalized JSON, `no-store` |
 | `src/app/api/jellyfin/health/route.ts` (new) | GET, diagnostic status/version, `no-store` |
 | `src/app/api/jellyfin/artwork/[itemId]/route.ts` (new) | Async params, validated IDs/tags, bounded image proxy and security headers |
+
+**M2 completion record (2026-10-18):**
+
+- **Changed files:**
+  - Added `src/app/api/jellyfin/sessions/route.ts` — GET handler delegating to `getJellyfinSessions()`; `runtime = "nodejs"`, `dynamic = "force-dynamic"`, `Cache-Control: no-store`; always HTTP 200 with an application `status` field.
+  - Added `src/app/api/jellyfin/health/route.ts` — GET handler delegating to `getJellyfinHealth()`; same runtime/dynamic/no-store conventions; diagnostic status/version; not independently polled by Overview.
+  - Added `src/app/api/jellyfin/artwork/[itemId]/route.ts` — async `params`, item-ID/tag validation before any upstream call (404 without fetch), disabled/unconfigured short-circuit, `fetchJellyfinPrimaryImage` proxy, `X-Content-Type-Options: nosniff`, `Cache-Control: private, max-age=86400` on success, sanitized 404 (empty body, no upstream details) on failure.
+  - Modified `src/lib/integrations/jellyfin/client.ts` — refactored the artwork fetch into `fetchPrimaryImageOnce(itemId, tag, withAuth)`; added server-fixed `maxWidth=600`/`quality=80` query params; added a one-shot server-side auth retry (attach `MediaBrowser Token="<key>"` only after a 401/403; key never in a URL/query string and never on the first attempt).
+  - Added `src/lib/jellyfin-routes.test.ts` — 18 route tests covering valid/invalid IDs and tags, MIME allowlist, oversize (declared and chunked), timeout, auth retry, network failure, redirect refusal, fixed image path/dimensions, no-upstream-call on invalid/disabled/unconfigured input, and no secret exposure.
+- **M1 mismatch reconciliation (minimal, documented):**
+  1. *Artwork authentication* — M1 deliberately attached no API key to artwork requests ("no speculative auth changes"; deferred as a later M2/M4 verification item). The spec's server-side-token requirement ("if server artwork requires authentication, use server-side token only") is now honored with a conditional, one-shot retry: the first attempt is unauthenticated (no key), and only a 401/403 triggers a retry carrying the token server-side. The key never reaches the browser, never appears in a URL/query string, and redirects are never followed on either attempt.
+  2. *Server-fixed image dimensions/quality* — M1's artwork fetch used no size/quality params. Added `maxWidth=600` and `quality=80` so the proxy requests a bounded size from Jellyfin; the browser cannot influence upstream image size.
+- **Locked requirements preserved:** `runtime = "nodejs"`, `dynamic = "force-dynamic"`, `no-store` on JSON, HTTP 200 + application `status` for expected integration failures, async Next.js 15.5 params, validation-before-fetch, fixed `Items/{id}/Images/Primary` path, `redirect: "manual"`, JPEG/PNG/WebP-only content types, 2 MB bounded reads (declared + chunked with abort), 5 s timeout, `nosniff`, `private, max-age=86400` on validated tag, sanitized failures, zero upstream requests when disabled/unconfigured, no API key/URL/body/header leaks, and no duplicate health/Attention changes.
+- **Test results:** `npm test` → 156 passing (18 new route tests). `npm run lint` clean; `npm run build` clean.
+- **Blockers:** none. Real-server verification of artwork authentication remains a later M4 item (unchanged).
+- **Remaining milestones:** M3 (dashboard/polling), M4 (technical details/posters), M5 (docs/version bump).
 
 ### M3 — Dashboard
 | File | Required work |
