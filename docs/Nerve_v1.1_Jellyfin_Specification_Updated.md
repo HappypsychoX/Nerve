@@ -1,6 +1,6 @@
 # Nerve v1.1 — Jellyfin Integration
-**Status:** Real-server verification gate (M0) completed, revised 2026-10-17. **M1 (integration & configuration), M2 (API routes), M3 (dashboard/polling), and M4 (technical details/posters) implemented and validated 2026-10-18; M5 remains.**  
-**Progress:** M1, M2, M3, and M4 are implemented and validated under this specification; M5 (docs/version bump) remains to be built. The M1–M5 requirements below are unchanged and still binding.  
+**Status:** Real-server verification gate (M0) completed, revised 2026-10-17. **M1 (integration & configuration), M2 (API routes), M3 (dashboard/polling), and M4 (technical details/posters) implemented and validated 2026-10-18; M5 (documentation, validation, release preparation) completed 2026-10-18.** The `1.1.0` version bump is applied and all release-blocking manual acceptance checks are confirmed; the remaining non-blocking items are recorded in §8.  
+**Progress:** M1–M5 are implemented and validated under this specification; release/versioning (`1.1.0`) is complete. The M1–M5 requirements below are unchanged and still binding.  
 **Basis:** Original v1.1 specification and Claude Opus 5.5 planning review of Nerve `master`, v1.0.1 (`7681fb5`).
 
 ## 1. Release goal and locked decisions
@@ -275,6 +275,18 @@ Verified server version `10.11.11`, successful token authentication/session quer
 
 Keep implementation scoped to the files actually required by the repository. Avoid refactoring unrelated integrations.
 
+**M5 completion record (2026-10-18):**
+
+- **Changed files:**
+  - `.env.example` — added `JELLYFIN_URL` and `JELLYFIN_API_KEY` as empty (dummy) placeholders with guidance: Jellyfin API keys are **not read-only scoped** (create a dedicated, revocable key named "Nerve"); `JELLYFIN_URL` must be reachable from inside the Nerve container.
+  - `compose.yaml` — added pass-through `JELLYFIN_URL=${JELLYFIN_URL:-}` and `JELLYFIN_API_KEY=${JELLYFIN_API_KEY:-}` to the `nerve` service, with a comment noting production Compose definitions are maintained separately in Shitflix-Docker (Portainer environment substitutions already configured there) and that real keys must never be placed in this file. No Docker network rewiring.
+  - `README.md` — added a "Jellyfin activity monitoring" section: dedicated revocable key warning, read-only GET allowlist, environment vs display-only YAML, container networking reachability, TLS guidance (never disable verification), restart-after-change requirements, 10-second Overview-scoped polling, privacy/data-exposure boundaries, and a troubleshooting table. Updated the Status, Configuration, and Project-structure references to include Jellyfin.
+- **Version bump (applied):** `package.json`, `package-lock.json`, and `src/lib/version.ts` updated consistently to `1.1.0` after acceptance criteria passed (all release-blocking manual checks confirmed by the user).
+- **Validation results:** `npm test` → 185 passing (12 files). `npm run lint` → clean. `npm run build` → clean (all three Jellyfin routes compile). No regression.
+- **Real-world validation (user-confirmed on the deployed feature branch):** playing, paused, and idle clients; multiple simultaneous streams; online/offline detection by stopping Jellyfin; recovery after Jellyfin restart; artwork displayed; transcode details/reasons visible; narrow/mobile viewport rendering; keyboard-accessible expand/collapse. Edge DevTools confirmed ~10 s session polling on Overview, polling stopping when navigating away and resuming on return, and no overlapping requests under throttling.
+- **Remaining non-blocking, not separately live-verified items (covered by automated fixtures or minor edge cases):** live missing/bad API key and malformed upstream response; the "online, no sessions" empty state; dashboard behavior with Jellyfin disabled/unconfigured; distinct direct-play vs direct-stream observation; the stale last-good banner while offline; and the artwork auth-retry branch (artwork display itself is confirmed).
+- **Blockers:** none.
+
 ## 8. Tests and acceptance criteria
 
 **Automated (existing Vitest Node environment; no new component-testing dependencies):**
@@ -296,6 +308,8 @@ Keep implementation scoped to the files actually required by the repository. Avo
 - Narrow/mobile viewport and keyboard-accessible expand/collapse.
 - Existing dashboard unaffected when Jellyfin is disabled or unconfigured.
 - `npm run lint`, `npm test`, `npm run build` pass before release.
+
+**Real-server validation results (2026-10-18, deployed feature branch):** Confirmed — playing, paused, and idle clients; multiple simultaneous streams; online/offline detection by stopping Jellyfin; recovery after Jellyfin restart; artwork displayed; transcode details/reasons visible; narrow/mobile viewport rendering; keyboard-accessible expand/collapse; ~10 s Overview polling with polling stopped while navigating away and resumed on return, and no overlapping requests under throttling (Edge DevTools). **Not separately live-verified but non-blocking** (covered by automated fixtures or minor edge cases) — live missing/bad API key and malformed upstream response; "online with no sessions" empty state; dashboard behavior with Jellyfin disabled/unconfigured; distinct direct-play vs direct-stream observation; stale last-good banner while offline; artwork auth-retry branch. All release-blocking gates are confirmed; acceptance is complete.
 
 **Definition of done:** Correct live and idle monitoring on the installed server; credentials and private fields protected; failure isolation and responsive UI; no duplicate health alerts; tests and build pass; docs and release version updated.
 
