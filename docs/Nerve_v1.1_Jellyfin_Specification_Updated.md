@@ -1,6 +1,6 @@
 # Nerve v1.1 — Jellyfin Integration
-**Status:** Real-server verification gate (M0) completed, revised 2026-10-17. **M1 (integration & configuration), M2 (API routes), and M3 (dashboard/polling) implemented and validated 2026-10-18; M4–M5 remain.**  
-**Progress:** M1, M2, and M3 are implemented and validated under this specification; M4 (technical details/posters) and M5 (docs/version bump) remain to be built. The M1–M5 requirements below are unchanged and still binding.  
+**Status:** Real-server verification gate (M0) completed, revised 2026-10-17. **M1 (integration & configuration), M2 (API routes), M3 (dashboard/polling), and M4 (technical details/posters) implemented and validated 2026-10-18; M5 remains.**  
+**Progress:** M1, M2, M3, and M4 are implemented and validated under this specification; M5 (docs/version bump) remains to be built. The M1–M5 requirements below are unchanged and still binding.  
 **Basis:** Original v1.1 specification and Claude Opus 5.5 planning review of Nerve `master`, v1.0.1 (`7681fb5`).
 
 ## 1. Release goal and locked decisions
@@ -253,6 +253,18 @@ Verified server version `10.11.11`, successful token authentication/session quer
 |---|---|
 | `src/components/dashboard/jellyfin/jellyfin-details.tsx` (new) | Expandable technical details, source/output distinction, unavailable fallbacks |
 | `jellyfin-session.tsx` | Artwork with stable tagged URL, lazy load and fallback |
+
+**M4 completion record (2026-10-18):**
+
+- **Changed files:**
+  - Added `src/components/dashboard/jellyfin/jellyfin-details.tsx` — accessible expandable "Technical details" per playback session: native `<button>` with `aria-expanded`/`aria-controls` (panel always mounted and toggled via `hidden`, so `aria-controls` always references an existing node), a `scope`-annotated `<table>` (with `sr-only` caption) showing source vs transcoded output video/audio codecs and resolution in **independent** columns, playback method, and transcode reasons. Null/absent values render "—" (never NaN/0%/misleading values); transcode reasons row appears only when reasons exist.
+  - Modified `src/components/dashboard/jellyfin/jellyfin-session.tsx` — added `"use client"` and poster rendering: a fixed 2:3 (`aspect-[2/3]`) box is always present when `showPosters` is true (no layout shift), rendering `next/image` with `unoptimized` + `fill` + `object-cover` (same-origin proxy path, no optimizer round-trip, lazy loading), with an `onError` fallback to the icon placeholder (unmount, not src-swap) and `key={posterUrl}` so a changed image tag resets the error state. `showPosters=false` and null/bad `posterUrl` fall through to the icon placeholder; no credentials or upstream URLs are ever rendered.
+  - Modified `src/lib/jellyfin-display.ts` — added pure Node-testable helpers `buildCodecDetailRows` (source/output independence), `formatDetailValue` ("—" for null/empty, trims), and `formatTranscodeReasons` (comma-joined or null).
+  - Added `src/lib/jellyfin-details.test.ts` — 8 tests covering source/output independence in both directions, null/empty/whitespace fallbacks, and reason formatting.
+- **Locked requirements preserved:** no M1/M2/M3 files modified; 10-second Overview-scoped polling, last-good snapshot, and session state rendering unchanged; no duplicate health/Attention changes; transcoding remains a subset of playing/paused; posters use only the normalized same-origin `/api/jellyfin/artwork/[itemId]?tag=...` path with no credential/upstream leak; no version bump or other M5 work.
+- **Test results:** `npm test` → 185 passing (8 new M4 tests). `npm run lint` clean; `npm run build` clean. Independent review returned APPROVE WITH NITS (no material security/correctness/a11y issues); the two cosmetic nits were addressed (detail-value trimming and a symmetric null-source independence test).
+- **Blockers:** none. The §8 real-server manual matrix — live poster retrieval including the artwork-auth fallback, observed transcoding source/output details, and keyboard/narrow-viewport expansion of the details panel — remains a pre-release validation step that cannot be exercised in the Node test harness.
+- **Remaining milestones:** M5 (docs/version bump).
 
 ### M5 — Documentation, validation, release
 | File | Required work |

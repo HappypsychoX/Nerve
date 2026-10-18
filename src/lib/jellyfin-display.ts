@@ -2,6 +2,7 @@ import type {
   JellyfinCounts,
   JellyfinMedia,
   JellyfinPlayMethod,
+  JellyfinPlayback,
   JellyfinSession,
   JellyfinStatus,
 } from "@/lib/integrations/jellyfin/types";
@@ -116,4 +117,30 @@ export function groupJellyfinSessions(sessions: JellyfinSession[]): JellyfinSess
     }
   }
   return groups;
+}
+
+export interface JellyfinDetailRow {
+  label: string;
+  source: string | null;
+  output: string | null;
+}
+
+export function buildCodecDetailRows(playback: JellyfinPlayback): JellyfinDetailRow[] {
+  return [
+    { label: "Video codec", source: playback.sourceVideoCodec, output: playback.outputVideoCodec },
+    { label: "Audio codec", source: playback.sourceAudioCodec, output: playback.outputAudioCodec },
+    { label: "Resolution", source: playback.sourceResolution, output: playback.outputResolution },
+  ];
+}
+
+export function formatDetailValue(value: string | null): string {
+  if (value === null || value === undefined || value.trim() === "") return "—";
+  return value.trim();
+}
+
+export function formatTranscodeReasons(reasons: readonly string[] | null | undefined): string | null {
+  if (!reasons) return null;
+  const cleaned = reasons.filter((entry) => typeof entry === "string" && entry.trim() !== "");
+  if (cleaned.length === 0) return null;
+  return cleaned.join(", ");
 }
