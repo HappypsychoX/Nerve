@@ -70,3 +70,17 @@ services:
     name: T3 Code
     url: https://t3.example.com
     group: remote-access
+
+# Jellyfin activity section — display-only toggles.
+#   enabled          — whether the Jellyfin section appears and polls.
+#   showPosters      — fetch and show poster artwork.
+#   showIdleClients  — list connected idle clients alongside playing/paused.
+# Connection details (JELLYFIN_URL and JELLYFIN_API_KEY) live in environment
+# variables, never here; do not add url, apiKey, or refreshIntervalSeconds to
+# this block. Config changes require a container restart.
+#
+# Uncomment to enable; when absent the loader applies these same defaults.
+# jellyfin:
+#   enabled: true
+#   showPosters: true
+#   showIdleClients: true

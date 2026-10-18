@@ -28,9 +28,15 @@ export function usePolled<T>(
 
   useEffect(() => {
     let active = true;
+    // Per-effect-instance in-flight flag: a fresh closure is created each
+    // time the effect re-runs, so an aborted request from a previous run can
+    // never clear (or be confused with) the current run's guard.
+    let inFlight = false;
     const controller = new AbortController();
 
     const tick = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const res = await fetch(url, {
           cache: "no-store",
@@ -50,6 +56,7 @@ export function usePolled<T>(
       } catch {
         if (active) setError(true);
       } finally {
+        inFlight = false;
         if (active) setLoading(false);
       }
     };

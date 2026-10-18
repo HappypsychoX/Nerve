@@ -14,7 +14,11 @@ See [`Nerve-v1-Plan.md`](./Nerve-v1-Plan.md) for the full build plan.
 
 ## Status
 
-**v1.0.1 — Milestone 7 (Deployment) complete.**
+**v1.1.0 — Jellyfin activity monitoring.**
+
+Read-only, real-time Jellyfin activity (currently playing, paused, and idle
+clients) is shown on the Overview page; see **Jellyfin activity monitoring**
+below.
 
 Milestones 0–7 are implemented:
 
@@ -144,7 +148,8 @@ variables for secrets and connection details.
    3. `config/opNervexample.yaml` (fallback)
 
 2. **Environment** — see [`.env.example`](./.env.example). Secrets and
-   integration URLs (Docker, WUD, Gluetun, Offen) live here, never in YAML.
+   integration URLs (Docker, WUD, Gluetun, Jellyfin, Offen) live here, never in
+   YAML.
 
 Display overrides: `NERVE_TITLE`, `NERVE_SERVER_NAME`.
 
@@ -177,6 +182,121 @@ Setup:
    public VPN IP. If the key is missing or rejected (401/403), the card
    degrades gracefully — a broken Gluetun integration never blocks the rest of
    the dashboard.
+
+## Jellyfin activity monitoring
+
+Nerve shows real-time, **read-only** Jellyfin activity on the **Overview** page:
+currently playing, paused, and recently connected idle clients, plus transcode
+details and poster artwork. Nerve never plays, pauses, stops, or otherwise
+controls Jellyfin, and it never writes to Jellyfin.
+
+### API key (dedicated and revocable)
+
+Jellyfin API keys are **not read-only scoped** — a Jellyfin key can perform any
+action the server allows, including writes and admin operations. Nerve does not
+"downgrade" the key; it protects you by only ever issuing read-only GET requests
+(see **Read-only allowlist** below).
+
+- Create a **dedicated key named "Nerve"** in **Jellyfin → Dashboard → API
+  Keys**. Do not reuse a personal or admin key.
+- Store it in `JELLYFIN_API_KEY` (see `.env.example`). Never commit it, never
+  put it in YAML, and never put it in a URL or query string.
+- Revoke and rotate the key at any time without affecting the rest of Jellyfin;
+  Nerve reports `unauthorized` until you restart it with the new key.
+
+### Read-only allowlist
+
+Nerve calls exactly these Jellyfin endpoints, and nothing else:
+
+| Endpoint | Purpose | Auth |
+| --- | --- | --- |
+| `GET /System/Info/Public` | Server version (diagnostics) | none |
+| `GET /Sessions?activeWithinSeconds=960` | Active sessions | `MediaBrowser Token="<key>"` |
+| `GET /Items/{id}/Images/Primary` | Poster artwork (via proxy) | retry-only |
+
+The key is sent in the `Authorization: MediaBrowser Token="<key>"` header, never
+in a URL. Redirects are never followed. Requests are bounded (5-second timeout),
+and poster fetches are constrained to a fixed width/quality (`maxWidth=600`,
+`quality=80`), JPEG/PNG/WebP only, and a 2 MB maximum body.
+
+### Environment vs display-only YAML
+
+- **Environment variables** (`JELLYFIN_URL`, `JELLYFIN_API_KEY`) carry the
+  connection details and the secret. They are server-side only and are never
+  sent to the browser.
+- **YAML** (`config/opNervexample.yaml`) carries only display toggles:
+
+  ```yaml
+  jellyfin:
+    enabled: true
+    showPosters: true
+    showIdleClients: true
+  ```
+
+  Do **not** add `url`, `apiKey`, or `refreshIntervalSeconds` to YAML.
+
+### Container networking
+
+`JELLYFIN_URL` must be reachable **from inside the Nerve container**:
+
+- **Shared Docker network** — if Jellyfin and Nerve share a Docker network, use
+  the service/container name, e.g. `JELLYFIN_URL=http://jellyfin:8096`. Nerve's
+  compose does not auto-join Jellyfin's network; attach it explicitly (for
+  example, as an external network).
+- **Host address** — otherwise use a host-reachable address such as
+  `JELLYFIN_URL=http://192.168.40.186:8096`.
+
+The value in this repository's `compose.yaml` is a pass-through
+(`${JELLYFIN_URL:-}`); production Compose definitions are maintained separately
+(in Shitflix-Docker), where the Portainer environment substitutions are already
+configured.
+
+### TLS
+
+- If the Jellyfin endpoint uses a certificate Nerve does not trust (for example,
+  a self-signed certificate), prefer **internal HTTP over a trusted Docker
+  network** instead.
+- **Never disable TLS certificate verification.** Requests that carry the API
+  key must not be sent to an unverified endpoint.
+
+### Restart after configuration changes
+
+Nerve's config loader caches the loaded configuration for the process lifetime,
+and environment variables are read at startup. After changing `JELLYFIN_URL`,
+`JELLYFIN_API_KEY`, or the display-only YAML block, **restart (recreate) the
+Nerve container** for the change to take effect.
+
+### Polling
+
+The Overview page polls Jellyfin sessions **every 10 seconds, and only while
+Overview is mounted**. Navigating to Containers, Backups, or Updates stops the
+polling; returning to Overview resumes it. Poll ticks are skipped while a
+previous request is still in flight, so slow responses never overlap.
+
+### Privacy and data exposure
+
+- Nerve is **LAN-only** with no application authentication (see
+  **Network exposure**). Do not expose it publicly.
+- The Jellyfin session payload is normalized through a strict field allowlist.
+  `RemoteEndPoint`, `DeviceId`, `UserId`, capabilities, queues, raw session
+  objects, and the API key are **never** sent to the browser or written to logs.
+- Poster artwork is served through Nerve's own bounded proxy
+  (`/api/jellyfin/artwork/[itemId]?tag=...`); Jellyfin's URL and credentials
+  never reach the browser.
+- Anonymous/DLNA sessions are shown as "Unidentified client" without fabricating
+  a username.
+
+### Troubleshooting
+
+| Symptom | Likely cause / fix |
+| --- | --- |
+| "Jellyfin is not configured" | `JELLYFIN_URL`/`JELLYFIN_API_KEY` empty — set them and restart Nerve. |
+| "Jellyfin API key was rejected" | Bad or revoked key — recreate the "Nerve" key and restart Nerve. |
+| "Jellyfin is offline or unreachable" | Nerve cannot reach `JELLYFIN_URL` — check the network/host and restart. |
+| "Jellyfin returned an unexpected response" | Unexpected upstream response — check Jellyfin health/version. |
+| No poster is shown | `showPosters: false` hides posters — set it to `true` and restart Nerve. |
+| Poster shows a placeholder icon | `showPosters: true` but no usable artwork reference, or the image failed to load. |
+| "Jellyfin monitoring is disabled" | `jellyfin.enabled: false` — the section stays visible but stops polling; enable it and restart Nerve. |
 
 ## Network exposure
 
@@ -312,7 +432,7 @@ src/
   lib/
     config/            # YAML configuration loader + types + matching
     db/                # SQLite + Drizzle schema, client, repository
-    integrations/      # docker + services + wud + backup + gluetun adapters
+    integrations/      # docker + services + wud + backup + gluetun + jellyfin adapters
     health.ts          # status model helpers
     utils.ts
   types/               # shared domain models (ContainerStatus, BackupRun, ...)

@@ -37,6 +37,12 @@ services:
       - OFFEN_WEBHOOK_TOKEN=${OFFEN_WEBHOOK_TOKEN:-}
       - GLUETUN_URL=${GLUETUN_URL:-http://gluetun:8000}
       - GLUETUN_API_KEY=${GLUETUN_API_KEY:-}
+      # Jellyfin — pass-through only. Production Compose definitions are
+      # maintained separately in Shitflix-Docker (Portainer environment
+      # substitutions are already configured there). Never put a real key in
+      # this file; set these in the stack's environment variables.
+      - JELLYFIN_URL=${JELLYFIN_URL:-}
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY:-}
     volumes:
       - nerve-config:/app/config
       - nerve-data:/app/data

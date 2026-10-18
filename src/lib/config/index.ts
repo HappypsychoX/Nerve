@@ -6,7 +6,9 @@ export {
   isCriticalContainer,
   matchUpdateForContainer,
 } from "./matching";
+export { DEFAULT_JELLYFIN_DISPLAY } from "./types";
 export type {
+  JellyfinDisplayConfig,
   NerveConfig,
   ServiceConfig,
   ServiceGroup,
