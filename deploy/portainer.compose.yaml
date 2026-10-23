@@ -1,0 +1,163 @@
+# First-party template for the existing Nerve Portainer stack (project: nerve).
+# This is a complete stack, used by itself; do not merge it with compose.yaml.
+# Mirrors the prepared Shitflix-Docker/Nerve_Stack/docker-compose.yaml.
+# The certificate bind source is specific to this Docker Desktop Linux host:
+# Windows C:/ProgramData/Nerve/trust/portainer-probe.pem maps to the source below.
+# Export/verify only the public cert; never mount Portainer data or a private key.
+# See docs/Portainer-Health-TLS.md for provisioning, rotation and verification.
+# Publish the approved Nerve patch to the remote build ref before deployment.
+# Keep existing Portainer secrets, volumes and stack name. Apply only after approval.
+services:
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: nerve-socket-proxy
+    restart: unless-stopped
+    environment:
+      # Read-only Docker API areas. Non-GET requests are denied by the proxy.
+      CONTAINERS: "1"
+      IMAGES: "1"
+      INFO: "1"
+      SYSTEM: "1"
+      EVENTS: "1"
+      VERSION: "1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - nerve-internal
+
+  nerve:
+    build:
+      # Keep the dashboard source and Dockerfile with the stack without
+      # duplicating the Nerve project in this compose collection.
+      context: https://github.com/HappypsychoX/Nerve.git#master
+      dockerfile: Dockerfile
+    container_name: nerve
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - JELLYFIN_URL=${JELLYFIN_URL}
+      - JELLYFIN_API_KEY=${JELLYFIN_API_KEY}
+      # The inline Compose config works for both Git and Web Editor stacks.
+      - NERVE_CONFIG_PATH=/run/configs/nerve.yaml
+      - DOCKER_HOST=tcp://socket-proxy:2375
+      - WUD_URL=http://wud:3000
+      - WUD_USERNAME=${WUD_USERNAME:-}
+      - WUD_PASSWORD=${WUD_PASSWORD:-}
+      - OFFEN_WEBHOOK_TOKEN=${OFFEN_WEBHOOK_TOKEN:-}
+      - GLUETUN_URL=${GLUETUN_URL:-http://gluetun:8000}
+      - GLUETUN_API_KEY=${GLUETUN_API_KEY:-}
+    volumes:
+      - nerve-config:/app/config
+      - nerve-data:/app/data
+      # Public Portainer certificate only; read-only, fail if host file is absent.
+      - type: bind
+        source: /run/desktop/mnt/host/c/ProgramData/Nerve/trust/portainer-probe.pem
+        target: /run/configs/portainer-probe.pem
+        read_only: true
+        bind:
+          create_host_path: false
+    configs:
+      - source: nerve-display-config
+        target: /run/configs/nerve.yaml
+        mode: 0444
+    ports:
+      # Dashboard: trusted LAN / Meshnet interface only.
+      - "3001:3000"
+    depends_on:
+      - socket-proxy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - nerve-internal
+
+networks:
+  nerve-internal:
+    driver: bridge
+
+volumes:
+  nerve-config:
+  nerve-data:
+
+configs:
+  # This inline block is the display/health configuration for this deployment.
+  # NERVE_CONFIG_PATH selects its mounted file; fallback config is not used.
+  nerve-display-config:
+    content: |
+      title: Shitflix Nerve
+      serverName: Shitflix
+
+      groups:
+        - id: infrastructure
+          name: Infrastructure
+        - id: media
+          name: Media
+        - id: downloads
+          name: Downloads
+        - id: monitoring
+          name: Monitoring / Maintenance
+
+      services:
+        - id: portainer
+          name: Portainer
+          url: https://192.168.40.186:9443
+          checkUrl: https://192.168.40.186:9443/api/system/status
+          checkTls:
+            caFile: /run/configs/portainer-probe.pem
+            serverName: localhost
+          group: infrastructure
+          critical: true
+
+        - id: nginx-proxy-manager
+          name: Nginx Proxy Manager
+          url: http://192.168.40.186:81
+          checkUrl: http://192.168.40.186:81
+          group: infrastructure
+          critical: true
+
+        - id: jellyfin
+          name: Jellyfin
+          url: http://192.168.40.186:8096
+          checkUrl: http://192.168.40.186:8096
+          group: media
+          critical: true
+
+        - id: jellyseerr
+          name: Jellyseerr
+          url: http://192.168.40.186:5055
+          checkUrl: http://192.168.40.186:5055
+          group: media
+
+        - id: qbittorrent
+          name: qBittorrent
+          url: http://192.168.40.186:8085
+          checkUrl: http://192.168.40.186:8085
+          group: downloads
+
+        - id: radarr
+          name: Radarr
+          url: http://192.168.40.186:7878
+          checkUrl: http://192.168.40.186:7878
+          group: downloads
+
+        - id: sonarr
+          name: Sonarr
+          url: http://192.168.40.186:8989
+          checkUrl: http://192.168.40.186:8989
+          group: downloads
+
+        - id: prowlarr
+          name: Prowlarr
+          url: http://192.168.40.186:9696
+          checkUrl: http://192.168.40.186:9696
+          group: downloads
+
+        - id: wud
+          name: WUD
+          url: http://192.168.40.186:3000
+          checkUrl: http://192.168.40.186:3000
+          group: monitoring

@@ -1,3 +1,7 @@
+# Portable local-build example. The existing production Portainer arrangement
+# (remote Git build, inline YAML and scoped public-certificate bind) is captured
+# in deploy/portainer.compose.yaml. Use that complete template by itself for
+# the existing stack; do not combine the two files or create a parallel stack.
 services:
   socket-proxy:
     image: tecnativa/docker-socket-proxy:latest

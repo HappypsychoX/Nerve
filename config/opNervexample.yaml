@@ -6,6 +6,10 @@
 # belong in environment variables / Docker secrets.
 #
 # The config loader falls back to this file when config/nerve.yaml is absent.
+# Production instead uses the inline nerve-display-config in
+# deploy/portainer.compose.yaml at /run/configs/nerve.yaml. That template includes
+# the active checkTls block and matching read-only certificate bind. Editing
+# this fallback alone does not change an existing inline configuration.
 
 # Title shown in the sidebar brand.
 title: Nerve
@@ -28,7 +32,7 @@ groups:
   - id: other
     name: Other
 
-# Internal services: quick links now, health checks in a later milestone.
+# Internal services: quick links and read-only health checks.
 # `url`     — public/open URL used for the quick-access shortcut.
 # `checkUrl`— private URL Nerve will probe for reachability.
 # `critical`— a critical service being down degrades overall health.
@@ -36,7 +40,15 @@ services:
   - id: portainer
     name: Portainer
     url: https://192.168.40.186:9443
-    checkUrl: https://192.168.40.186:9443
+    checkUrl: https://192.168.40.186:9443/api/system/status
+    # Optional in this portable fallback; active in the Portainer template.
+    # Mount a separately verified public cert/CA only for this probe.
+    # The installed Portainer certificate has DNS SAN localhost, not the LAN IP.
+    # Keep both certificate and hostname verification enabled; see
+    # docs/Portainer-Health-TLS.md for fingerprint and deployment instructions.
+    # checkTls:
+    #   caFile: /run/configs/portainer-probe.pem
+    #   serverName: localhost
     group: infrastructure
     critical: true
 

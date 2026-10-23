@@ -27,7 +27,7 @@ export async function checkServices(
       }
 
       try {
-        const probe = await probeUrl(service.checkUrl);
+        const probe = await probeUrl(service.checkUrl, undefined, service.checkTls);
         const { health, detail } = mapProbeToHealth(probe);
         return {
           id: service.id,

@@ -1,6 +1,6 @@
 {
   "name": "nerve",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "description": "Nerve — private self-hosted homelab operations dashboard",
   "scripts": {
@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:tls": "node scripts/verify-tls.mjs"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.3",
@@ -33,5 +34,8 @@
     "tailwindcss": "3.4.19",
     "typescript": "5.9.3",
     "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22.23.4 <23 || >=24.22.1 <25 || >=26.12.1 <27"
   }
 }
