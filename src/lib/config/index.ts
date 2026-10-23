@@ -11,6 +11,7 @@ export type {
   JellyfinDisplayConfig,
   NerveConfig,
   ServiceConfig,
+  ServiceCheckTls,
   ServiceGroup,
   ServiceGroupConfig,
 } from "./types";

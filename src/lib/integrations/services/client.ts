@@ -1,5 +1,9 @@
 import http from "node:http";
 import https from "node:https";
+import { readFileSync } from "node:fs";
+import { X509Certificate } from "node:crypto";
+import { isIP } from "node:net";
+import type { ServiceCheckTls } from "@/lib/config";
 import type { ServiceProbe } from "./types";
 
 export const SERVICE_CHECK_TIMEOUT_MS = 5000;
@@ -7,6 +11,7 @@ export const SERVICE_CHECK_TIMEOUT_MS = 5000;
 export function probeUrl(
   url: string,
   timeoutMs: number = SERVICE_CHECK_TIMEOUT_MS,
+  checkTls?: ServiceCheckTls,
 ): Promise<ServiceProbe> {
   let parsed: URL;
   try {
@@ -17,6 +22,34 @@ export function probeUrl(
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
     return Promise.resolve({ statusCode: null, error: "network" });
+  }
+
+  let tlsOptions: https.RequestOptions = {};
+  if (checkTls !== undefined) {
+    // Config is runtime YAML: fail closed for missing/malformed trust settings
+    // and never silently downgrade a scoped HTTPS check to HTTP.
+    if (
+      parsed.protocol !== "https:" ||
+      !checkTls ||
+      typeof checkTls.caFile !== "string" ||
+      !checkTls.caFile.trim() ||
+      (checkTls.serverName !== undefined &&
+        (typeof checkTls.serverName !== "string" ||
+          !checkTls.serverName.trim() ||
+          isIP(checkTls.serverName) !== 0))
+    ) {
+      return Promise.resolve({ statusCode: null, error: "network" });
+    }
+    try {
+      const ca = readFileSync(checkTls.caFile);
+      // Reject empty/non-certificate files before creating a request.
+      new X509Certificate(ca);
+      // An explicit ca replaces public roots for this probe. Do not mutate
+      // global agents/roots; do not override checkServerIdentity.
+      tlsOptions = { ca, servername: checkTls.serverName, agent: false };
+    } catch {
+      return Promise.resolve({ statusCode: null, error: "network" });
+    }
   }
 
   return new Promise<ServiceProbe>((resolve) => {
@@ -35,12 +68,13 @@ export function probeUrl(
       finish({ statusCode: res.statusCode ?? null, error: null });
     };
 
-    // rejectUnauthorized:false is safe here: read-only reachability probe, no secrets sent
+    // HTTPS health checks must authenticate the endpoint, including probes
+    // without credentials. Never count an untrusted certificate as healthy.
     const req =
       parsed.protocol === "https:"
         ? https.request(
             parsed,
-            { method: "GET", rejectUnauthorized: false },
+            { ...tlsOptions, method: "GET", rejectUnauthorized: true },
             onResponse,
           )
         : http.request(parsed, { method: "GET" }, onResponse);

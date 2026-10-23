@@ -6,11 +6,19 @@ export type ServiceGroup =
   | "remote-access"
   | "other";
 
+export interface ServiceCheckTls {
+  // Trusted PEM certificate/CA for this service probe only.
+  caFile: string;
+  // Optional DNS SAN used for SNI and normal TLS hostname verification.
+  serverName?: string;
+}
+
 export interface ServiceConfig {
   id: string;
   name: string;
   url?: string;
   checkUrl?: string;
+  checkTls?: ServiceCheckTls;
   group: ServiceGroup;
   critical?: boolean;
   icon?: string;

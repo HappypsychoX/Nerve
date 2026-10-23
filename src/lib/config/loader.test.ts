@@ -111,4 +111,29 @@ describe("loadConfig jellyfin block", () => {
       showIdleClients: true,
     });
   });
+
+  it("keeps private TLS settings scoped to the configured service", async () => {
+    const file = join(dir, "nerve.yaml");
+    writeFileSync(file, [
+      "services:",
+      "  - id: portainer",
+      "    name: Portainer",
+      "    group: infrastructure",
+      "    checkUrl: https://192.0.2.1:9443/api/system/status",
+      "    checkTls:",
+      "      caFile: /run/configs/portainer-probe.pem",
+      "      serverName: localhost",
+      "  - id: jellyfin",
+      "    name: Jellyfin",
+      "    group: media",
+      "    checkUrl: http://jellyfin:8096",
+    ].join("\n"));
+    vi.stubEnv("NERVE_CONFIG_PATH", file);
+    const { loadConfig } = await import("@/lib/config");
+    const config = loadConfig();
+    expect(config.services[0].checkTls).toEqual({
+      caFile: "/run/configs/portainer-probe.pem", serverName: "localhost",
+    });
+    expect(config.services[1].checkTls).toBeUndefined();
+  });
 });

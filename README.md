@@ -14,7 +14,12 @@ See [`Nerve-v1-Plan.md`](./Nerve-v1-Plan.md) for the full build plan.
 
 ## Status
 
-**v1.1.0 — Jellyfin activity monitoring.**
+**v1.1.1 — TLS trust security patch; Jellyfin activity monitoring.**
+
+The container uses Node 22.23.4 and Alpine CA certificates 20261020-r0 or
+newer. HTTPS service checks now verify certificates. See the
+[October 2026 TLS patch notes](./docs/TLS-Trust-2026-10.md) for evidence,
+isolated verification, deployment requirements and rollback.
 
 Read-only, real-time Jellyfin activity (currently playing, paused, and idle
 clients) is shown on the Overview page; see **Jellyfin activity monitoring**
@@ -53,12 +58,18 @@ part of Milestone 7.
 
 ## Local development
 
-Requirements: Node.js 22+ and npm.
+Requirements: Node.js 22.23.4+ on the 22.x line and npm (`.nvmrc` pins
+22.23.4). Patched 24.x (24.22.1+) and 26.x (26.12.1+) are also accepted by
+`engines`; the production container stays on Node 22.
 
 ```bash
 npm install
 npm run dev
 ```
+
+`npm run test:tls` is an opt-in external HTTPS regression check. All four
+eMudhra test hosts must fail certificate validation while the normal HTTPS
+controls succeed. Network failures are failures, not proof of remediation.
 
 Open http://localhost:3000.
 
@@ -100,32 +111,40 @@ For Portainer deployment, see **Deployment (Portainer)** below.
 
 ## Deployment (Portainer)
 
-Nerve is deployed as a Portainer stack built from [`compose.yaml`](./compose.yaml).
+Use [`deploy/portainer.compose.yaml`](./deploy/portainer.compose.yaml) for the
+existing Portainer deployment. It is a complete, first-party template matching
+the prepared external `Nerve_Stack/docker-compose.yaml`: remote Nerve `#master`
+build, inline display YAML, existing named volumes/network, and the scoped
+Portainer public-certificate mount. Use it by itself; `compose.yaml` remains
+the portable local-build example.
 
-1. In Portainer, go to **Stacks → Add stack**. Name the stack `nerve`
-   (lowercase — the stack name becomes the compose network prefix,
-   `nerve_nerve-internal`, which the backup integration below depends on).
-   Choose **Web editor** and paste the contents of `compose.yaml`.
-2. Under **Environment variables**, add the secrets from
-   [`.env.example`](./.env.example) — at minimum:
-   - `OFFEN_WEBHOOK_TOKEN` — shared secret for the backup webhook (see
-     **Backup integration** below)
-   - `GLUETUN_API_KEY` — read-only Gluetun API key (see
-     **Gluetun read-only access** below)
-   - Optional: `WUD_USERNAME` / `WUD_PASSWORD` if your WUD instance requires
-     authentication. `WUD_URL` defaults to `http://wud:3000` in `compose.yaml`;
-     edit the stack if your WUD runs elsewhere. `GLUETUN_URL` defaults to
-     `http://gluetun:8000`.
-
-   Keep secrets in the stack's environment variables, never in the compose
-   YAML itself.
-3. Click **Deploy the stack**. Portainer builds the `nerve` image and creates
-   the `nerve-config` and `nerve-data` named volumes on first deploy.
-4. Wait for the `nerve` container to show as **healthy** (the healthcheck polls
-   `/api/health`; `start_period` is 20s), then open `http://<server-ip>:3001`.
-5. To customize service names, URLs, and groups, edit `nerve.yaml` inside the
-   `nerve-config` volume (Portainer → Volumes → Browse) — see
-   **Configuration**.
+1. Review the template against the **existing `nerve` stack**. Preserve the
+   stack name, volume names, secrets and any intentional local customizations.
+   Do not create a second stack alongside containers with the same names.
+   A first installation also uses stack name `nerve` to retain the expected
+   `nerve_nerve-internal` network prefix.
+2. Verify the public certificate already provisioned at
+   `C:\ProgramData\Nerve\trust\portainer-probe.pem`. The template binds its
+   Docker Desktop Linux path read-only at `/run/configs/portainer-probe.pem`
+   and includes the active `checkTls` configuration. Follow the
+   [certificate provisioning, rotation and verification guide](./docs/Portainer-Health-TLS.md).
+   On another Docker host, replace the source with its verified absolute host
+   path. Never mount Portainer's data volume or private key into Nerve.
+3. Keep `JELLYFIN_URL`, `JELLYFIN_API_KEY`, `OFFEN_WEBHOOK_TOKEN`,
+   `GLUETUN_API_KEY` and optional `WUD_USERNAME`/`WUD_PASSWORD` in Portainer's
+   stack environment. The template contains substitutions, never credentials.
+4. Publish/build the approved Nerve patch on the effective source ref before
+   deployment: the template uses GitHub `#master`, so local edits or a feature
+   branch alone do not reach that build. After explicit deployment approval,
+   synchronize the template into the existing stack's editor or Git source
+   and recreate **only Nerve**. Portainer's Update/Deploy action applies the
+   stack; editing this repository does not change an already-running container.
+5. Confirm the Nerve healthcheck, the live read-only certificate mount,
+   Portainer `online` / HTTP 200 in `/api/services/health`, and the existing
+   integrations. Display/health configuration lives in
+   `configs.nerve-display-config.content`, mounted at `/run/configs/nerve.yaml`
+   via `NERVE_CONFIG_PATH`. Edit that inline block for this deployment;
+   `/app/config/nerve.yaml` and the fallback example do not override it.
 
 Both services use `restart: unless-stopped`, so the stack comes back
 automatically after a host reboot.
@@ -147,11 +166,26 @@ variables for secrets and connection details.
    2. `config/nerve.yaml`
    3. `config/opNervexample.yaml` (fallback)
 
+   The Portainer template sets `NERVE_CONFIG_PATH=/run/configs/nerve.yaml` and
+   supplies that file from its inline config. Its Portainer TLS settings and
+   certificate bind must be kept together when customizing the template.
+
 2. **Environment** — see [`.env.example`](./.env.example). Secrets and
    integration URLs (Docker, WUD, Gluetun, Jellyfin, Offen) live here, never in
    YAML.
 
 Display overrides: `NERVE_TITLE`, `NERVE_SERVER_NAME`.
+
+HTTPS `checkUrl` values require a trusted certificate with a matching
+hostname. Self-signed endpoints (including a default Portainer certificate)
+will show offline/unreachable. Use a valid HTTPS endpoint, a vetted private
+CA, or an internal HTTP health URL on a trusted network. Never disable TLS
+validation to restore a green status.
+
+For the installed Portainer endpoint, the [scoped TLS probe guide](./docs/Portainer-Health-TLS.md)
+documents a verified public-certificate mount and per-service `checkTls`
+settings. These preserve validation without changing global Node trust or
+opening Portainer's HTTP port.
 
 ---
 
